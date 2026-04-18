@@ -7,11 +7,13 @@ import { Card } from "../components/ui/Card";
 import { calculateReorder } from "../lib/calculations";
 import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
+import AddProductModal from "../components/AddProductModal";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
   const [search, setSearch] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -50,7 +52,7 @@ export default function ProductsList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button size="icon" className="h-10 w-10 shrink-0">
+        <Button size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsAddOpen(true)}>
           <Plus className="h-5 w-5" />
         </Button>
         <Button 
@@ -64,6 +66,7 @@ export default function ProductsList() {
       </div>
 
       <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+      <AddProductModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
 
       {isLoading ? (
         <div className="animate-pulse space-y-3 pt-4">
