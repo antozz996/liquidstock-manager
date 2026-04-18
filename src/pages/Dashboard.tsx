@@ -55,6 +55,16 @@ export default function Dashboard() {
             {lowStockProducts.length}
           </span>
         </div>
+
+        <div className="rounded-xl border border-muted bg-card p-4 shadow-sm flex flex-col justify-between col-span-2">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+            <Package className="w-5 h-5" />
+            <span className="text-sm font-medium">Valore Totale Magazzino (Costo)</span>
+          </div>
+          <span className="text-3xl font-bold text-white">
+            {formatCurrency(activeProducts.reduce((acc, p) => acc + (p.current_stock * p.cost_price), 0))}
+          </span>
+        </div>
       </div>
 
       {lastEvent && (

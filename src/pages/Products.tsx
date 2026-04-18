@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useProductStore } from "../store/useProductStore";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Upload } from "lucide-react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { calculateReorder } from "../lib/calculations";
 import { generateReorderPDF } from "../lib/pdf";
+import ImportModal from "../components/ImportModal";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
   const [search, setSearch] = useState("");
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -51,7 +53,17 @@ export default function ProductsList() {
         <Button size="icon" className="h-10 w-10 shrink-0">
           <Plus className="h-5 w-5" />
         </Button>
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-10 w-10 shrink-0 border-primary/30 text-primary"
+          onClick={() => setIsImportOpen(true)}
+        >
+          <Upload className="h-5 w-5" />
+        </Button>
       </div>
+
+      <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
 
       {isLoading ? (
         <div className="animate-pulse space-y-3 pt-4">
@@ -63,10 +75,10 @@ export default function ProductsList() {
             <Card key={p.id} className={`p-4 flex justify-between items-center ${!p.is_active ? 'opacity-50' : ''}`}>
               <div>
                 <p className="font-semibold text-white">{p.name}</p>
-                <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
-                  <span className="bg-muted/30 px-2 py-0.5 rounded-sm">{p.category}</span>
-                  <span>{p.cost_price}€ cad.</span>
-                </div>
+                  <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
+                    <span className="bg-muted/30 px-2 py-0.5 rounded-sm">{p.category}</span>
+                    <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
+                  </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
