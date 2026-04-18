@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useProductStore } from "../store/useProductStore";
-import { Search, Plus, Filter } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { calculateReorder } from "../lib/calculations";
 import { generateReorderPDF } from "../lib/pdf";
-import { RefreshCw } from "lucide-react";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();

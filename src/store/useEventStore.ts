@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Event, EventStock, Product, ReportSummary } from '../types';
+import type { Event, EventStock, Product } from '../types';
 import { calculateEventReport } from '../lib/calculations';
 
 interface EventState {
@@ -9,7 +9,6 @@ interface EventState {
   isLoading: boolean;
   fetchCurrentEvent: () => Promise<void>;
   openNewEvent: (name: string, date: string, products: Product[]) => Promise<void>;
-  updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
   updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
   closeEvent: () => Promise<void>;
   softEditReport: (eventId: string, reportId: string, productId: string, newFinalQty: number, note: string) => Promise<void>;
@@ -23,7 +22,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   fetchCurrentEvent: async () => {
     set({ isLoading: true });
     // Cerca eventuali eventi aperti
-    const { data: events, error } = await supabase
+    const { data: events } = await supabase
       .from('events')
       .select('*')
       .eq('status', 'open')
@@ -53,7 +52,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     set({ isLoading: true });
     
     // 1. Inserisci l'evento
-    const { data: newEvent, error: evErr } = await supabase
+    const { data: newEvent } = await supabase
       .from('events')
       .insert([{ name, date, status: 'open' }])
       .select()

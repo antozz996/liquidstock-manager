@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useEventStore } from "../store/useEventStore";
 import { useProductStore } from "../store/useProductStore";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
-import { formatCurrency, formatNumber } from "../lib/formatters";
-import { AlertCircle, Info } from "lucide-react";
+import { formatCurrency } from "../lib/formatters";
+import { AlertCircle } from "lucide-react";
 
 export default function EventsSpace() {
   const { currentEvent, eventStocks, isLoading, fetchCurrentEvent, openNewEvent, updateFinalStock, closeEvent } = useEventStore();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { Card } from "../components/ui/Card";
@@ -12,7 +12,7 @@ import type { Event, Report as ReportType } from "../types";
 export default function ReportPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { softEditReport, isLoading: isUpdating } = useEventStore();
+  const { softEditReport } = useEventStore();
   const [event, setEvent] = useState<Event | null>(null);
   const [report, setReport] = useState<ReportType | null>(null);
   const [loading, setLoading] = useState(true);

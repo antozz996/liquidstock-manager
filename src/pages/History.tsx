@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { FileText, Download, ChevronRight } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { Event, Report as ReportType } from "../types";
 import { generateReportPDF } from "../lib/pdf";
 

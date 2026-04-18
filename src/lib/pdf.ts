@@ -1,14 +1,13 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency, formatDate, formatNumber } from './formatters';
-import type { Event, ReportSummary, Product } from '../types';
+import type { Event, ReportSummary } from '../types';
 
 /**
  * Genera il PDF del report di fine serata.
  */
 export const generateReportPDF = (event: Event, summary: ReportSummary) => {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header
   doc.setFontSize(20);

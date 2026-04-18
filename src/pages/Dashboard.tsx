@@ -4,14 +4,13 @@ import { Package, AlertTriangle, ArrowRight, History } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { supabase } from "../lib/supabase";
-import { formatDate } from "../lib/formatters";
 import type { Event } from "../types";
 import { useNavigate } from "react-router-dom";
 
 // Dummy Card Component since we didn't write it fully, let's just make it simple
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { products, fetchProducts, isLoading } = useProductStore();
+  const { products, fetchProducts } = useProductStore();
   const [lastEvent, setLastEvent] = useState<Event | null>(null);
 
   useEffect(() => {
