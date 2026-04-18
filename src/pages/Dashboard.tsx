@@ -4,6 +4,7 @@ import { Package, AlertTriangle, ArrowRight, History } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { supabase } from "../lib/supabase";
+import { formatCurrency } from "../lib/formatters";
 import type { Event } from "../types";
 import { useNavigate } from "react-router-dom";
 
