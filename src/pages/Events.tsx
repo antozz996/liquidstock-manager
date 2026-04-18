@@ -5,7 +5,8 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Package } from "lucide-react";
+import { groupBy } from "../lib/utils";
 
 export default function EventsSpace() {
   const { currentEvent, eventStocks, isLoading, fetchCurrentEvent, openNewEvent, updateFinalStock, closeEvent } = useEventStore();
@@ -104,53 +105,65 @@ export default function EventsSpace() {
         </div>
       </div>
 
-      <div className="space-y-4 mt-6">
-        {eventStocks?.map(stock => {
-          const product = stock.product;
-          if (!product) return null;
-          
-          const consumed = stock.final_qty !== null ? stock.initial_qty - stock.final_qty : 0;
-          const isAnomaly = consumed < 0;
+      <div className="space-y-10 mt-6">
+        {Object.entries(groupBy(eventStocks, (es: any) => es.product?.category || 'Generale')).map(([cat, stocks]) => (
+          <div key={cat} className="space-y-4">
+            <h2 className="text-xs font-black text-primary uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+              <span className="h-px bg-primary/20 flex-1"></span>
+              {cat}
+              <span className="h-px bg-primary/20 flex-1"></span>
+            </h2>
+            
+            <div className="space-y-3">
+              {stocks.map(stock => {
+                const product = stock.product;
+                if (!product) return null;
+                
+                const consumed = stock.final_qty !== null ? stock.initial_qty - stock.final_qty : 0;
+                const isAnomaly = consumed < 0;
 
-          return (
-            <Card key={stock.id} className={`p-4 transition-colors ${isAnomaly ? 'border-accent-red/50 bg-accent-red/5' : ''}`}>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-white text-lg truncate">{product.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs bg-muted/20 px-1.5 py-0.5 rounded text-muted-foreground border border-muted/30">
-                      Inizio: {stock.initial_qty}
-                    </span>
-                    {stock.final_qty !== null && (
-                      <span className={`text-xs font-bold ${isAnomaly ? 'text-accent-red' : 'text-accent-green'}`}>
-                        {isAnomaly ? 'Anomalia: ' : 'Consumato: '}{consumed}
-                      </span>
+                return (
+                  <Card key={stock.id} className={`p-4 transition-colors ${isAnomaly ? 'border-accent-red/50 bg-accent-red/5' : ''}`}>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-white text-lg truncate">{product.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs bg-muted/20 px-1.5 py-0.5 rounded text-muted-foreground border border-muted/30">
+                            Inizio: {stock.initial_qty}
+                          </span>
+                          {stock.final_qty !== null && (
+                            <span className={`text-xs font-bold ${isAnomaly ? 'text-accent-red' : 'text-accent-green'}`}>
+                              {isAnomaly ? 'Anomalia: ' : 'Consumato: '}{consumed}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Input 
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="Q.tà"
+                          className={`w-20 text-center text-xl font-bold h-12 ${isAnomaly ? 'border-accent-red text-accent-red' : ''}`}
+                          value={stock.final_qty === null ? "" : stock.final_qty}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
+                            updateFinalStock(stock.id, val as any);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {isAnomaly && (
+                      <div className="mt-2 flex items-center gap-1.5 text-accent-red text-[10px] font-medium">
+                        <AlertCircle size={12} />
+                        <span>Hai inserito una giacenza finale superiore a quella iniziale!</span>
+                      </div>
                     )}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Input 
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="Q.tà"
-                    className={`w-20 text-center text-xl font-bold h-12 ${isAnomaly ? 'border-accent-red text-accent-red' : ''}`}
-                    value={stock.final_qty === null ? "" : stock.final_qty}
-                    onChange={(e) => {
-                      const val = e.target.value === "" ? null : parseFloat(e.target.value);
-                      updateFinalStock(stock.id, val as any);
-                    }}
-                  />
-                </div>
-              </div>
-              {isAnomaly && (
-                <div className="mt-2 flex items-center gap-1.5 text-accent-red text-[10px] font-medium">
-                  <AlertCircle size={12} />
-                  <span>Hai inserito una giacenza finale superiore a quella iniziale!</span>
-                </div>
-              )}
-            </Card>
-          );
-        })}
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { calculateReorder } from "../lib/calculations";
 import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
 import AddProductModal from "../components/AddProductModal";
+import { groupBy } from "../lib/utils";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
@@ -23,6 +24,9 @@ export default function ProductsList() {
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.category.toLowerCase().includes(search.toLowerCase())
   );
+
+  const grouped = groupBy(filtered, 'category');
+  const categories = Object.keys(grouped).sort();
 
   return (
     <div className="space-y-4 pt-4 pb-20">
@@ -73,37 +77,47 @@ export default function ProductsList() {
           {[1,2,3,4].map(i => <div key={i} className="h-20 bg-card rounded-xl"></div>)}
         </div>
       ) : (
-        <div className="grid gap-3 pt-2">
-          {filtered.map(p => (
-            <Card key={p.id} className={`p-4 flex justify-between items-center ${!p.is_active ? 'opacity-50' : ''}`}>
-              <div>
-                <p className="font-semibold text-white">{p.name}</p>
-                  <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
-                    <span className="bg-muted/30 px-2 py-0.5 rounded-sm">{p.category}</span>
-                    <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
-                  </div>
+        <div className="space-y-8 pt-2">
+          {categories.map(cat => (
+            <div key={cat} className="space-y-3">
+              <h2 className="text-xs font-black text-primary uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                <span className="h-px bg-primary/20 flex-1"></span>
+                {cat || "Generale"}
+                <span className="h-px bg-primary/20 flex-1"></span>
+              </h2>
+              <div className="grid gap-3">
+                {grouped[cat].map(p => (
+                  <Card key={p.id} className={`p-4 flex justify-between items-center ${!p.is_active ? 'opacity-50' : ''}`}>
+                    <div>
+                      <p className="font-semibold text-white">{p.name}</p>
+                      <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
+                        <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
+                        <p className={`text-xl font-bold ${p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'}`}>
+                          {p.current_stock}
+                        </p>
+                      </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-10 w-10 rounded-full bg-muted/10 hov:bg-muted/20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const qty = prompt(`Quante unità di "${p.name}" stai aggiungendo?`);
+                          if(qty) useProductStore.getState().restockProduct(p.id, parseFloat(qty));
+                        }}
+                      >
+                        <Plus className="w-5 h-5 text-primary" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
-                  <p className={`text-xl font-bold ${p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'}`}>
-                    {p.current_stock}
-                  </p>
-                </div>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-10 w-10 rounded-full bg-muted/10 hov:bg-muted/20"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const qty = prompt(`Quante unità di "${p.name}" stai aggiungendo?`);
-                    if(qty) useProductStore.getState().restockProduct(p.id, parseFloat(qty));
-                  }}
-                >
-                  <Plus className="w-5 h-5 text-primary" />
-                </Button>
-              </div>
-            </Card>
+            </div>
           ))}
           {filtered.length === 0 && (
             <p className="text-center text-muted-foreground py-8">Nessun prodotto trovato.</p>
