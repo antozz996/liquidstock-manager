@@ -10,7 +10,9 @@ interface ProductState {
   restockProduct: (productId: string, quantity: number, note?: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'current_stock' | 'is_active'>) => Promise<void>;
   bulkAddProducts: (products: Omit<Product, 'id' | 'current_stock' | 'is_active'>[]) => Promise<void>;
+  updateProduct: (productId: string, updates: Partial<Product>) => Promise<void>;
 }
+
 
 export const useProductStore = create<ProductState>((set) => ({
   products: [],
@@ -96,6 +98,23 @@ export const useProductStore = create<ProductState>((set) => ({
       
     if (!error && data) {
       set((state) => ({ products: [...state.products, ...(data as Product[])] }));
+    }
+    set({ isLoading: false });
+  },
+
+  updateProduct: async (productId, updates) => {
+    set({ isLoading: true });
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', productId)
+      .select()
+      .single();
+      
+    if (!error && data) {
+      set((state) => ({
+        products: state.products.map(p => p.id === productId ? { ...p, ...(data as Product) } : p)
+      }));
     }
     set({ isLoading: false });
   }

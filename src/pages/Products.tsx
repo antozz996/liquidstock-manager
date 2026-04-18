@@ -8,13 +8,16 @@ import { calculateReorder } from "../lib/calculations";
 import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
 import AddProductModal from "../components/AddProductModal";
+import EditProductModal from "../components/EditProductModal";
 import { groupBy } from "../lib/utils";
+import type { Product } from "../types";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
   const [search, setSearch] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -71,6 +74,11 @@ export default function ProductsList() {
 
       <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
       <AddProductModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} />
+      <EditProductModal 
+        product={selectedProduct} 
+        isOpen={!!selectedProduct} 
+        onClose={() => setSelectedProduct(null)} 
+      />
 
       {isLoading ? (
         <div className="animate-pulse space-y-3 pt-4">
@@ -87,7 +95,11 @@ export default function ProductsList() {
               </h2>
               <div className="grid gap-3">
                 {grouped[cat].map(p => (
-                  <Card key={p.id} className={`p-4 flex justify-between items-center ${!p.is_active ? 'opacity-50' : ''}`}>
+                  <Card 
+                    key={p.id} 
+                    className={`p-4 flex justify-between items-center cursor-pointer transition-all hover:border-primary/50 active:scale-[0.98] ${!p.is_active ? 'opacity-50' : ''}`}
+                    onClick={() => setSelectedProduct(p)}
+                  >
                     <div>
                       <p className="font-semibold text-white">{p.name}</p>
                       <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
