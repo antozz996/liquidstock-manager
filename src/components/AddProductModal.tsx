@@ -15,6 +15,7 @@ export default function AddProductModal({ isOpen, onClose }: AddProductModalProp
   const [formData, setFormData] = useState({
     name: "",
     category: "",
+    unit: "bt",
     cost_price: 0,
     selling_price: 0,
     min_threshold: 0

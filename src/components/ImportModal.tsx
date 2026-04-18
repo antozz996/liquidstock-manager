@@ -49,6 +49,7 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
           return {
             name: row[findKey(['nome', 'prodotto', 'articolo', 'name'])] || 'Senza Nome',
             category: row[findKey(['categoria', 'category', 'tipo', 'area'])] || 'Generale',
+            unit: 'bt',
             cost_price: parseFloat(row[findKey(['costo', 'acquisto', 'cost'])] || 0),
             selling_price: parseFloat(row[findKey(['vendita', 'prezzo', 'sell'])] || 0),
             min_threshold: parseInt(row[findKey(['soglia', 'min', 'threshold', 'riordino'])] || 0),
@@ -120,9 +121,12 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
                   onChange={handleFileUpload}
                   disabled={loading}
                 />
-                <Button asChild variant="secondary" size="sm">
-                  <label htmlFor="file-upload" className="cursor-pointer">Sfoglia Documenti</label>
-                </Button>
+                <label 
+                  htmlFor="file-upload" 
+                  className="cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium h-9 px-3 bg-card text-white border border-muted hover:bg-muted transition-colors"
+                >
+                  Sfoglia Documenti
+                </label>
                 
                 <button 
                   type="button"
