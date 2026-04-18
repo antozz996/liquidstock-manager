@@ -29,7 +29,7 @@ export default function AddProductModal({ isOpen, onClose }: AddProductModalProp
     
     await addProduct(formData);
     onClose();
-    setFormData({ name: "", category: "", cost_price: 0, selling_price: 0, min_threshold: 0 });
+    setFormData({ name: "", category: "", unit: "bt", cost_price: 0, selling_price: 0, min_threshold: 0 });
   };
 
   return (
