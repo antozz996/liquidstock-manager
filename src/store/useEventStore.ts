@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Event, EventStock, Product } from '../types';
+import type { Event, EventStock, Product, ReportSummary } from '../types';
+import { calculateEventReport } from '../lib/calculations';
 
 interface EventState {
   currentEvent: Event | null;
@@ -9,7 +10,9 @@ interface EventState {
   fetchCurrentEvent: () => Promise<void>;
   openNewEvent: (name: string, date: string, products: Product[]) => Promise<void>;
   updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
+  updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
   closeEvent: () => Promise<void>;
+  softEditReport: (eventId: string, reportId: string, productId: string, newFinalQty: number, note: string) => Promise<void>;
 }
 
 export const useEventStore = create<EventState>((set, get) => ({
@@ -104,27 +107,135 @@ export const useEventStore = create<EventState>((set, get) => ({
       is_editable_until: editableUntil
     }).eq('id', currentEvent.id);
 
-    // 2. Aggiorna final_qty in event_stocks
+    // 2. Aggiorna final_qty in event_stocks e prepara dati per report
     for (const es of eventStocks) {
       if (es.final_qty !== null && es.product) {
         const consumed = es.initial_qty - es.final_qty;
+        const cost_value = consumed * es.product.cost_price;
+        const rev_value = consumed * es.product.selling_price;
+        const stock_value_cost = es.final_qty * es.product.cost_price;
+        const stock_value_sell = es.final_qty * es.product.selling_price;
+
         await supabase.from('event_stocks').update({
           final_qty: es.final_qty,
           consumed: consumed,
-          cost_value: consumed * es.product.cost_price,
-          rev_value: consumed * es.product.selling_price,
-          stock_value_cost: es.final_qty * es.product.cost_price,
-          stock_value_sell: es.final_qty * es.product.selling_price
+          cost_value: cost_value,
+          rev_value: rev_value,
+          stock_value_cost: stock_value_cost,
+          stock_value_sell: stock_value_sell
         }).eq('id', es.id);
         
-        // 3. Aggiorna nuovo stock del prodotto!
+        // 3. Aggiorna nuovo stock del prodotto
         await supabase.from('products').update({
           current_stock: es.final_qty
         }).eq('id', es.product.id);
       }
     }
 
+    // 4. Genera e salva il Report finale
+    const summary = calculateEventReport(eventStocks);
+    await supabase.from('reports').insert([{
+      event_id: currentEvent.id,
+      total_cost_consumed: summary.total_cost_consumed,
+      total_revenue_est: summary.total_revenue_est,
+      total_margin: summary.total_margin,
+      total_stock_value_cost: summary.total_stock_value_cost,
+      total_stock_value_sell: summary.total_stock_value_sell,
+      details_json: summary.details_json
+    }]);
+
     set({ currentEvent: null, eventStocks: [] });
+    set({ isLoading: false });
+  },
+
+  softEditReport: async (eventId, reportId, productId, newFinalQty, note) => {
+    set({ isLoading: true });
+    
+    // 1. Recupera lo stato attuale del report e dello stock dell'evento
+    const { data: eventStock } = await supabase
+      .from('event_stocks')
+      .select('*, product:products(*)')
+      .eq('event_id', eventId)
+      .eq('product_id', productId)
+      .single();
+
+    const { data: report } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('id', reportId)
+      .single();
+
+    if (eventStock && report && eventStock.product) {
+      const oldFinal = eventStock.final_qty || 0;
+      const initial = eventStock.initial_qty || 0;
+      const deltaStock = newFinalQty - oldFinal;
+      const product = eventStock.product;
+
+      // 2. Ricalcola i valori per questa riga
+      const newConsumed = initial - newFinalQty;
+      const newCostValue = newConsumed * product.cost_price;
+      const newRevValue = newConsumed * product.selling_price;
+      const newStockValueCost = newFinalQty * product.cost_price;
+      const newStockValueSell = newFinalQty * product.selling_price;
+
+      // 3. Aggiorna event_stocks
+      await supabase
+        .from('event_stocks')
+        .update({
+          final_qty: newFinalQty,
+          consumed: newConsumed,
+          cost_value: newCostValue,
+          rev_value: newRevValue,
+          stock_value_cost: newStockValueCost,
+          stock_value_sell: newStockValueSell
+        })
+        .eq('id', eventStock.id);
+
+      // 4. Aggiorna current_stock nel database
+      const { data: prodData } = await supabase.from('products').select('current_stock').eq('id', productId).single();
+      if(prodData) {
+        await supabase.from('products').update({
+          current_stock: prodData.current_stock + deltaStock
+        }).eq('id', productId);
+      }
+
+      // 5. Ricalcola l'intero report (total cost, revenue, etc)
+      // Per semplicità recuperiamo tutti gli stocks aggiornati dell'evento
+      const { data: allStocks } = await supabase
+        .from('event_stocks')
+        .select('*, product:products(*)')
+        .eq('event_id', eventId);
+
+      if (allStocks) {
+        const summary = calculateEventReport(allStocks as unknown as EventStock[]);
+        
+        // 6. Aggiorna la tabella reports con i nuovi totali e il nuovo JSON
+        await supabase
+          .from('reports')
+          .update({
+            total_cost_consumed: summary.total_cost_consumed,
+            total_revenue_est: summary.total_revenue_est,
+            total_margin: summary.total_margin,
+            total_stock_value_cost: summary.total_stock_value_cost,
+            total_stock_value_sell: summary.total_stock_value_sell,
+            details_json: summary.details_json
+          })
+          .eq('id', reportId);
+
+        // 7. Salva nel log delle modifiche per audit trail
+        await supabase
+          .from('report_edit_log')
+          .insert([{
+            report_id: reportId,
+            field_changed: `final_qty_${productId}`,
+            old_value: oldFinal,
+            new_value: newFinalQty,
+            note: note,
+            snapshot_before: report.details_json,
+            snapshot_after: summary.details_json
+          }]);
+      }
+    }
     set({ isLoading: false });
   }
 }));

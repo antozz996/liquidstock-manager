@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+# 🍸 LiquidStock Manager
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Gestione professionale dell'inventario alcolici per discoteche, bar ed eventi. Mobile-first, offline-ready e integrata con Supabase.
 
-Currently, two official plugins are available:
+## 🚀 Funzionalità
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Apertura Serata**: Snapshot istantaneo della giacenza attuale.
+- **Chiusura Serata**: Calcolo automatico di consumi, margini e valori di magazzino in base alla giacenza fisica finale.
+- **Report PDF**: Generazione istantanea di report professionali per ogni evento.
+- **Gestione Riordini**: Calcolo e generazione PDF dell'ordine di acquisto basato sulle soglie minime impostate.
+- **Soft Edit**: Possibilità di correggere le giacenze inserite entro 96 ore dalla chiusura con audit trail completo.
+- **PWA**: Installabile su smartphone per un uso rapido sul campo.
 
-## React Compiler
+## 🛠 Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React + Vite + TypeScript
+- **Styling**: Tailwind CSS (Dark Mode optimized)
+- **State**: Zustand
+- **Database/Auth**: Supabase
+- **PDF**: jsPDF + jspdf-autotable
 
-## Expanding the ESLint configuration
+## 📦 Installazione Locale
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Clona il repository
+2. Installa le dipendenze: `npm install`
+3. Configura le variabili d'ambiente in `.env.local`:
+   ```env
+   VITE_SUPABASE_URL=la_tua_url
+   VITE_SUPABASE_ANON_KEY=la_tua_chiave
+   ```
+4. Avvia lo sviluppo: `npm run dev`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🌍 Deployment (Vercel)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Il progetto è pronto per essere deployato su **Vercel**:
+1. Collega il tuo account GitHub a Vercel.
+2. Importa il repository `liquidstock-manager`.
+3. Aggiungi le variabili d'ambiente `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nelle impostazioni del progetto su Vercel.
+4. Il deploy avverrà automaticamente ad ogni push.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+Sviluppato con ❤️ per una gestione magazzino senza stress.

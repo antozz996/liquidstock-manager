@@ -4,6 +4,9 @@ import { Search, Plus, Filter } from "lucide-react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { calculateReorder } from "../lib/calculations";
+import { generateReorderPDF } from "../lib/pdf";
+import { RefreshCw } from "lucide-react";
 
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
@@ -22,7 +25,18 @@ export default function ProductsList() {
     <div className="space-y-4 pt-4 pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Magazzino</h1>
-        <Button variant="outline" size="sm" className="h-9">Genera Ordine</Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-9 border-accent-orange/50 text-accent-orange"
+          onClick={() => {
+            const items = calculateReorder(products);
+            if(items.length > 0) generateReorderPDF(items);
+            else alert("Nessun prodotto sotto soglia!");
+          }}
+        >
+          Genera Ordine
+        </Button>
       </div>
 
       <div className="flex gap-2">
@@ -55,11 +69,25 @@ export default function ProductsList() {
                   <span>{p.cost_price}€ cad.</span>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground mb-1">Giacenza</p>
-                <p className={`text-xl font-bold ${p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'}`}>
-                  {p.current_stock}
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
+                  <p className={`text-xl font-bold ${p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'}`}>
+                    {p.current_stock}
+                  </p>
+                </div>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-10 w-10 rounded-full bg-muted/10 hov:bg-muted/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const qty = prompt(`Quante unità di "${p.name}" stai aggiungendo?`);
+                    if(qty) useProductStore.getState().restockProduct(p.id, parseFloat(qty));
+                  }}
+                >
+                  <Plus className="w-5 h-5 text-primary" />
+                </Button>
               </div>
             </Card>
           ))}

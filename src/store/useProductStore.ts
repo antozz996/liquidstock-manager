@@ -7,6 +7,7 @@ interface ProductState {
   isLoading: boolean;
   fetchProducts: () => Promise<void>;
   updateStock: (productId: string, newStock: number) => Promise<void>;
+  restockProduct: (productId: string, quantity: number, note?: string) => Promise<void>;
   addProduct: (product: Omit<Product, 'id' | 'current_stock' | 'is_active'>) => Promise<void>;
 }
 
@@ -41,6 +42,36 @@ export const useProductStore = create<ProductState>((set, get) => ({
         products: state.products.map(p => p.id === productId ? { ...p, current_stock: newStock } : p)
       }));
     }
+  },
+
+  restockProduct: async (productId, quantity, note) => {
+    set({ isLoading: true });
+    // 1. Prendi stock attuale
+    const { data: current } = await supabase
+      .from('products')
+      .select('current_stock')
+      .eq('id', productId)
+      .single();
+
+    if (current) {
+      const newStock = (current.current_stock || 0) + quantity;
+      
+      // 2. Aggiorna stock
+      await supabase
+        .from('products')
+        .update({ current_stock: newStock })
+        .eq('id', productId);
+
+      // 3. Registra log
+      await supabase
+        .from('restock_log')
+        .insert([{ product_id: productId, qty_added: quantity, note: note || 'Rifornimento manuale' }]);
+
+      set(state => ({
+        products: state.products.map(p => p.id === productId ? { ...p, current_stock: newStock } : p)
+      }));
+    }
+    set({ isLoading: false });
   },
 
   addProduct: async (product) => {

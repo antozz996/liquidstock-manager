@@ -8,6 +8,7 @@ import ProductsList from "./pages/Products";
 import EventsSpace from "./pages/Events";
 
 import HistoryArea from "./pages/History";
+import ReportPage from "./pages/Report";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/products/*" element={<ProductsList />} />
           <Route path="/events/*" element={<EventsSpace />} />
           <Route path="/history/*" element={<HistoryArea />} />
+          <Route path="/history/:eventId" element={<ReportPage />} />
         </Route>
       </Routes>
     </Router>

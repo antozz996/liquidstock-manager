@@ -2,10 +2,13 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { FileText, Download } from "lucide-react";
-import type { Event } from "../types";
+import { FileText, Download, ChevronRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import type { Event, Report as ReportType } from "../types";
+import { generateReportPDF } from "../lib/pdf";
 
 export default function HistoryArea() {
+  const navigate = useNavigate();
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,9 +25,19 @@ export default function HistoryArea() {
     fetchHistory();
   }, []);
 
-  const downloadReport = (eventId: string) => {
-    // Logica jsPDF qui
-    alert("Funzionalità PDF in arrivo! Simulazione per l'evento: " + eventId);
+  const downloadReport = async (e: React.MouseEvent, event: Event) => {
+    e.stopPropagation();
+    const { data: report } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('event_id', event.id)
+      .single();
+    
+    if (report) {
+      generateReportPDF(event, report as ReportType);
+    } else {
+      alert("Report non trovato per questo evento.");
+    }
   }
 
   if (loading) return <div className="pt-8 text-center animate-pulse">Caricamento storico...</div>;
@@ -39,9 +52,13 @@ export default function HistoryArea() {
           <p className="text-center text-muted-foreground py-8">Nessun evento chiuso trovato.</p>
         ) : (
           pastEvents.map(ev => (
-            <Card key={ev.id} className="p-4 flex items-center justify-between">
+            <Card 
+              key={ev.id} 
+              className="p-4 flex items-center justify-between cursor-pointer active:bg-muted/10 transition-colors"
+              onClick={() => navigate(`/history/${ev.id}`)}
+            >
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-card border border-muted flex items-center justify-center text-primary">
+                <div className="h-10 w-10 rounded-full bg-card border border-muted/30 flex items-center justify-center text-primary">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -49,9 +66,12 @@ export default function HistoryArea() {
                   <p className="text-xs text-muted-foreground">Chiuso: {new Date(ev.closed_at!).toLocaleDateString('it-IT')}</p>
                 </div>
               </div>
-              <Button size="icon" variant="outline" onClick={() => downloadReport(ev.id)}>
-                <Download className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="icon" variant="ghost" onClick={(e) => downloadReport(e, ev)}>
+                  <Download className="w-4 h-4 text-muted-foreground" />
+                </Button>
+                <ChevronRight className="w-4 h-4 text-muted/30" />
+              </div>
             </Card>
           ))
         )}

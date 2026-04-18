@@ -47,3 +47,11 @@ export interface Report {
   total_stock_value_sell: number;
   details_json: any; // array di righe snapshot
 }
+export interface ReportSummary {
+  total_cost_consumed: number;
+  total_revenue_est: number;
+  total_margin: number;
+  total_stock_value_cost: number;
+  total_stock_value_sell: number;
+  details_json: any[];
+}
