@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { sortProducts } from '../lib/utils';
 import type { Product } from '../types';
 
 interface ProductState {
@@ -29,7 +30,7 @@ export const useProductStore = create<ProductState>((set) => ({
     if (error) {
       console.error("Error fetching products:", error);
     } else {
-      set({ products: data as Product[] });
+      set({ products: sortProducts(data as Product[]) });
     }
     set({ isLoading: false });
   },

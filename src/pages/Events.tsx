@@ -6,7 +6,7 @@ import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
 import { AlertCircle } from "lucide-react";
-import { groupBy } from "../lib/utils";
+import { groupBy, CATEGORY_ORDER } from "../lib/utils";
 
 export default function EventsSpace() {
   const { currentEvent, eventStocks, isLoading, fetchCurrentEvent, openNewEvent, updateFinalStock, closeEvent } = useEventStore();
@@ -106,7 +106,15 @@ export default function EventsSpace() {
       </div>
 
       <div className="space-y-10 mt-6">
-        {Object.entries(groupBy(eventStocks, (es: any) => es.product?.category || 'Generale')).map(([cat, stocks]) => (
+        {Object.entries(groupBy(eventStocks, (es: any) => es.product?.category || 'Generale'))
+          .sort(([catA], [catB]) => {
+            const idxA = CATEGORY_ORDER.indexOf(catA);
+            const idxB = CATEGORY_ORDER.indexOf(catB);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+          })
+          .map(([cat, stocks]) => (
           <div key={cat} className="space-y-4">
             <h2 className="text-xs font-black text-primary uppercase tracking-[0.2em] px-1 flex items-center gap-2">
               <span className="h-px bg-primary/20 flex-1"></span>

@@ -9,7 +9,7 @@ import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
 import AddProductModal from "../components/AddProductModal";
 import EditProductModal from "../components/EditProductModal";
-import { groupBy } from "../lib/utils";
+import { groupBy, CATEGORY_ORDER } from "../lib/utils";
 import type { Product } from "../types";
 
 export default function ProductsList() {
@@ -29,7 +29,13 @@ export default function ProductsList() {
   );
 
   const grouped = groupBy(filtered, 'category');
-  const categories = Object.keys(grouped).sort();
+  const categories = Object.keys(grouped).sort((a, b) => {
+    const idxA = CATEGORY_ORDER.indexOf(a);
+    const idxB = CATEGORY_ORDER.indexOf(b);
+    if (idxA === -1) return 1;
+    if (idxB === -1) return -1;
+    return idxA - idxB;
+  });
 
   return (
     <div className="space-y-4 pt-4 pb-20">
