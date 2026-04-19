@@ -40,11 +40,34 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (data.user) {
-      const { data: profile } = await supabase
+      // 1. Prova a recuperare il profilo
+      let { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', data.user.id)
         .single();
+      
+      // 2. Se il profilo non esiste, verifichiamo se è il primo utente in assoluto
+      if (!profile) {
+        console.log("Profilo non trovato, verifico se è il primo sistema...");
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        if (count === 0) {
+          console.log("Primo utente rilevato! Assegnazione ruolo ADMIN...");
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([{ id: data.user.id, role: 'admin' }])
+            .select()
+            .single();
+          
+          if (!createError) {
+            profile = newProfile;
+          }
+        }
+      }
+
       set({ user: data.user, role: profile?.role || 'staff', isLoading: false });
     } else {
       set({ isLoading: false });
