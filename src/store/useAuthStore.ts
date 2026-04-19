@@ -22,12 +22,31 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // Recupera il ruolo dalla tabella profiles
-      const { data: profile } = await supabase
+      // 1. Recupera il ruolo dalla tabella profiles
+      let { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
+      
+      // 2. Se l'utente è loggato ma il profilo non esiste (es. registrazione interrotta)
+      //    e il sistema è vuoto, lo promuoviamo ad Admin
+      if (!profile) {
+        const { count } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+        
+        if (count === 0) {
+          console.log("Sistema vergine rilevato. Promozione utente corrente ad ADMIN...");
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([{ id: user.id, role: 'admin' }])
+            .select()
+            .single();
+          
+          if (!createError) profile = newProfile;
+        }
+      }
         
       set({ user, role: profile?.role || 'staff', isLoading: false });
     } else {
