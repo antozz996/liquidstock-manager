@@ -51,7 +51,6 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
             category: row[findKey(['categoria', 'category', 'tipo', 'area'])] || 'Generale',
             unit: 'bt',
             cost_price: parseFloat(row[findKey(['costo', 'acquisto', 'cost'])] || 0),
-            selling_price: parseFloat(row[findKey(['vendita', 'prezzo', 'sell'])] || 0),
             min_threshold: parseInt(row[findKey(['soglia', 'min', 'threshold', 'riordino'])] || 0),
           };
         });

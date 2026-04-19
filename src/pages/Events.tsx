@@ -8,9 +8,12 @@ import { formatCurrency } from "../lib/formatters";
 import { AlertCircle } from "lucide-react";
 import { groupBy, CATEGORY_ORDER } from "../lib/utils";
 
+import { useAuthStore } from "../store/useAuthStore";
+
 export default function EventsSpace() {
   const { currentEvent, eventStocks, isLoading, fetchCurrentEvent, openNewEvent, updateFinalStock, closeEvent } = useEventStore();
   const { products, fetchProducts } = useProductStore();
+  const { role } = useAuthStore();
 
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
@@ -49,10 +52,10 @@ export default function EventsSpace() {
           </div>
           <Button 
             className="w-full mt-4" 
-            disabled={!eventName || products.length === 0}
+            disabled={!eventName || products.length === 0 || role !== 'admin'}
             onClick={() => openNewEvent(eventName, eventDate, products.filter(p => p.is_active))}
           >
-            Apri Serata
+            {role === 'admin' ? "Apri Serata" : "Solo Admin può aprire serate"}
           </Button>
         </Card>
       </div>
@@ -84,26 +87,19 @@ export default function EventsSpace() {
       <p className="text-sm text-muted-foreground">Conta le bottiglie rimaste nel frigo per calcolare in automatico i consumi e sistemare le giacenze.</p>
 
       {/* Live Summary */}
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        <div className="bg-card border border-muted/30 p-3 rounded-lg">
-          <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Costo Consumato Est.</p>
-          <p className="text-xl font-bold text-white">
-            {formatCurrency(eventStocks.reduce((acc, es) => {
-              if (es.final_qty === null || !es.product) return acc;
-              return acc + (es.initial_qty - es.final_qty) * es.product.cost_price;
-            }, 0))}
-          </p>
+      {role === 'admin' && (
+        <div className="grid grid-cols-1 gap-3 mt-4">
+          <div className="bg-card border border-muted/30 p-3 rounded-lg">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Costo Consumato Est.</p>
+            <p className="text-xl font-bold text-white">
+              {formatCurrency(eventStocks.reduce((acc, es) => {
+                if (es.final_qty === null || !es.product) return acc;
+                return acc + (es.initial_qty - es.final_qty) * es.product.cost_price;
+              }, 0))}
+            </p>
+          </div>
         </div>
-        <div className="bg-card border border-muted/30 p-3 rounded-lg">
-          <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Ricavo Stimato</p>
-          <p className="text-xl font-bold text-accent-green">
-            {formatCurrency(eventStocks.reduce((acc, es) => {
-              if (es.final_qty === null || !es.product) return acc;
-              return acc + (es.initial_qty - es.final_qty) * es.product.selling_price;
-            }, 0))}
-          </p>
-        </div>
-      </div>
+      )}
 
       <div className="space-y-10 mt-6">
         {Object.entries(groupBy(eventStocks, (es: any) => es.product?.category || 'Generale'))

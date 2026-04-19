@@ -12,8 +12,11 @@ import EditProductModal from "../components/EditProductModal";
 import { groupBy, CATEGORY_ORDER } from "../lib/utils";
 import type { Product } from "../types";
 
+import { useAuthStore } from "../store/useAuthStore";
+
 export default function ProductsList() {
   const { products, fetchProducts, isLoading } = useProductStore();
+  const { role } = useAuthStore();
   const [search, setSearch] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -41,18 +44,20 @@ export default function ProductsList() {
     <div className="space-y-4 pt-4 pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Magazzino</h1>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-9 border-accent-orange/50 text-accent-orange"
-          onClick={() => {
-            const items = calculateReorder(products);
-            if(items.length > 0) generateReorderPDF(items);
-            else alert("Nessun prodotto sotto soglia!");
-          }}
-        >
-          Genera Ordine
-        </Button>
+        {role === 'admin' && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-9 border-accent-orange/50 text-accent-orange"
+            onClick={() => {
+              const items = calculateReorder(products);
+              if(items.length > 0) generateReorderPDF(items);
+              else alert("Nessun prodotto sotto soglia!");
+            }}
+          >
+            Genera Ordine
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -65,17 +70,21 @@ export default function ProductsList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsAddOpen(true)}>
-          <Plus className="h-5 w-5" />
-        </Button>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-10 w-10 shrink-0 border-primary/30 text-primary"
-          onClick={() => setIsImportOpen(true)}
-        >
-          <Upload className="h-5 w-5" />
-        </Button>
+        {role === 'admin' && (
+          <>
+            <Button size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsAddOpen(true)}>
+              <Plus className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 shrink-0 border-primary/30 text-primary"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <Upload className="h-5 w-5" />
+            </Button>
+          </>
+        )}
       </div>
 
       <ImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
@@ -103,19 +112,32 @@ export default function ProductsList() {
                 {grouped[cat].map(p => (
                   <Card 
                     key={p.id} 
-                    className={`p-4 flex justify-between items-center cursor-pointer transition-all hover:border-primary/50 active:scale-[0.98] ${!p.is_active ? 'opacity-50' : ''}`}
-                    onClick={() => setSelectedProduct(p)}
+                    className={cn(
+                      "p-4 flex justify-between items-center transition-all",
+                      role === 'admin' ? "cursor-pointer hover:border-primary/50 active:scale-[0.98]" : "cursor-default",
+                      !p.is_active && "opacity-50"
+                    )}
+                    onClick={() => {
+                      if(role === 'admin') setSelectedProduct(p);
+                    }}
                   >
                     <div>
                       <p className="font-semibold text-white">{p.name}</p>
                       <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
-                        <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
+                        {role === 'admin' ? (
+                          <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
+                        ) : (
+                          <span className="opacity-40 italic">Cod: {p.id.slice(0, 4)}</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
-                        <p className={`text-xl font-bold ${p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'}`}>
+                        <p className={cn(
+                          "text-xl font-bold",
+                          p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'
+                        )}>
                           {p.current_stock}
                         </p>
                       </div>

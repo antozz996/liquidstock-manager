@@ -111,17 +111,13 @@ export const useEventStore = create<EventState>((set, get) => ({
       if (es.final_qty !== null && es.product) {
         const consumed = es.initial_qty - es.final_qty;
         const cost_value = consumed * es.product.cost_price;
-        const rev_value = consumed * es.product.selling_price;
         const stock_value_cost = es.final_qty * es.product.cost_price;
-        const stock_value_sell = es.final_qty * es.product.selling_price;
 
         await supabase.from('event_stocks').update({
           final_qty: es.final_qty,
           consumed: consumed,
           cost_value: cost_value,
-          rev_value: rev_value,
           stock_value_cost: stock_value_cost,
-          stock_value_sell: stock_value_sell
         }).eq('id', es.id);
         
         // 3. Aggiorna nuovo stock del prodotto
@@ -136,10 +132,7 @@ export const useEventStore = create<EventState>((set, get) => ({
     await supabase.from('reports').insert([{
       event_id: currentEvent.id,
       total_cost_consumed: summary.total_cost_consumed,
-      total_revenue_est: summary.total_revenue_est,
-      total_margin: summary.total_margin,
       total_stock_value_cost: summary.total_stock_value_cost,
-      total_stock_value_sell: summary.total_stock_value_sell,
       details_json: summary.details_json
     }]);
 
@@ -173,9 +166,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       // 2. Ricalcola i valori per questa riga
       const newConsumed = initial - newFinalQty;
       const newCostValue = newConsumed * product.cost_price;
-      const newRevValue = newConsumed * product.selling_price;
       const newStockValueCost = newFinalQty * product.cost_price;
-      const newStockValueSell = newFinalQty * product.selling_price;
 
       // 3. Aggiorna event_stocks
       await supabase
@@ -184,9 +175,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           final_qty: newFinalQty,
           consumed: newConsumed,
           cost_value: newCostValue,
-          rev_value: newRevValue,
           stock_value_cost: newStockValueCost,
-          stock_value_sell: newStockValueSell
         })
         .eq('id', eventStock.id);
 
@@ -203,7 +192,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       const { data: allStocks } = await supabase
         .from('event_stocks')
         .select('*, product:products(*)')
-        .eq('event_id', eventId);
+        .eq('eventId', eventId);
 
       if (allStocks) {
         const summary = calculateEventReport(allStocks as unknown as EventStock[]);
@@ -213,10 +202,7 @@ export const useEventStore = create<EventState>((set, get) => ({
           .from('reports')
           .update({
             total_cost_consumed: summary.total_cost_consumed,
-            total_revenue_est: summary.total_revenue_est,
-            total_margin: summary.total_margin,
             total_stock_value_cost: summary.total_stock_value_cost,
-            total_stock_value_sell: summary.total_stock_value_sell,
             details_json: summary.details_json
           })
           .eq('id', reportId);
