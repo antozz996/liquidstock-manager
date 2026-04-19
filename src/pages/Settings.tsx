@@ -55,14 +55,19 @@ export default function Settings() {
     }
     const { error } = await supabase
       .from('configs')
-      .update({ value: newCode })
-      .eq('key', 'registration_code')
-      .eq('venue_id', venueId);
+      .upsert({ 
+        key: 'registration_code', 
+        value: newCode, 
+        venue_id: venueId 
+      }, { onConflict: 'key,venue_id' });
     
     if (!error) {
       setRegCode(newCode);
       setNewCode("");
-      alert("✅ Codice di registrazione aggiornato correttamente!");
+      alert("✅ Codice di registrazione salvato correttamente!");
+    } else {
+      console.error(error);
+      alert("Errore durante il salvataggio.");
     }
   };
 
