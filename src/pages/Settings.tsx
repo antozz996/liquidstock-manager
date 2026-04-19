@@ -68,7 +68,7 @@ export default function Settings() {
     if (!error) fetchData();
   };
 
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'super_admin') {
     return <div className="pt-20 text-center text-muted-foreground">Accesso riservato agli amministratori.</div>;
   }
 
