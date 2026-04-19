@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
-import { TrendingUp, Package, AlertCircle } from "lucide-react";
+import { TrendingUp, AlertCircle } from "lucide-react";
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -136,7 +136,7 @@ export default function Analytics() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {categoryData.map((entry, index) => (
+                  {categoryData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

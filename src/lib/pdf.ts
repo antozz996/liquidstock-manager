@@ -27,8 +27,6 @@ export const generateReportPDF = (event: Event, summary: ReportSummary) => {
   
   const summaryData = [
     ['Costo Consumato', formatCurrency(summary.total_cost_consumed)],
-    ['Ricavo Stimato', formatCurrency(summary.total_revenue_est)],
-    ['Margine Lordo', formatCurrency(summary.total_margin)],
   ];
 
   autoTable(doc, {
@@ -48,12 +46,11 @@ export const generateReportPDF = (event: Event, summary: ReportSummary) => {
     formatNumber(row.final_qty),
     formatNumber(row.consumed),
     formatCurrency(row.cost_value),
-    formatCurrency(row.rev_value),
   ]);
 
   autoTable(doc, {
     startY: (doc as any).lastAutoTable.finalY + 20,
-    head: [['Prodotto', 'Inizio', 'Fine', 'Cons.', 'Costo', 'Ricavo']],
+    head: [['Prodotto', 'Inizio', 'Fine', 'Cons.', 'Costo']],
     body: productData,
     theme: 'grid',
     headStyles: { fillColor: [31, 41, 55] }, // dark gray
@@ -64,7 +61,7 @@ export const generateReportPDF = (event: Event, summary: ReportSummary) => {
   const finalY = (doc as any).lastAutoTable.finalY;
   doc.setFontSize(12);
   doc.text(`Valore Magazzino Residuo (Costo): ${formatCurrency(summary.total_stock_value_cost)}`, 14, finalY + 15);
-  doc.text(`Valore Magazzino Residuo (Vendita): ${formatCurrency(summary.total_stock_value_sell)}`, 14, finalY + 22);
+
 
   if (event.status === 'closed') {
      doc.setFontSize(8);

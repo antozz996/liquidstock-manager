@@ -9,7 +9,7 @@ import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
 import AddProductModal from "../components/AddProductModal";
 import EditProductModal from "../components/EditProductModal";
-import { groupBy, CATEGORY_ORDER } from "../lib/utils";
+import { groupBy, CATEGORY_ORDER, cn } from "../lib/utils";
 import type { Product } from "../types";
 
 import { useAuthStore } from "../store/useAuthStore";

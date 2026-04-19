@@ -83,18 +83,10 @@ export default function ReportPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1">
         <div className="bg-card border border-muted/30 p-4 rounded-xl">
           <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Costo Consumato</p>
           <p className="text-2xl font-bold text-white">{formatCurrency(report.total_cost_consumed)}</p>
-        </div>
-        <div className="bg-card border border-muted/30 p-4 rounded-xl">
-          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Ricavo Stimato</p>
-          <p className="text-2xl font-bold text-accent-green">{formatCurrency(report.total_revenue_est)}</p>
-        </div>
-        <div className="bg-card border border-muted/30 p-4 rounded-xl col-span-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase mb-1">Margine Lordo</p>
-          <p className="text-3xl font-bold text-white">{formatCurrency(report.total_margin)}</p>
         </div>
       </div>
 
@@ -119,8 +111,8 @@ export default function ReportPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="font-medium text-white">{formatCurrency(item.rev_value)}</p>
-                  <p className="text-[10px] text-muted-foreground">Costo: {formatCurrency(item.cost_value)}</p>
+                  <p className="font-medium text-white">Consumato: {item.consumed}</p>
+                  <p className="text-[10px] text-muted-foreground">Valore: {formatCurrency(item.cost_value)}</p>
                 </div>
                 {canEdit && (
                   <Button 
