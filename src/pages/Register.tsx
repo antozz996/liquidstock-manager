@@ -55,10 +55,23 @@ export default function Register() {
         .select('value')
         .eq('key', 'registration_code')
         .eq('venue_id', venueId)
-        .single();
+        .maybeSingle();
 
-      if (codeError || data.value !== secretCode.trim()) {
-        setErrorMsg("Codice segreto non valido per questa struttura.");
+      if (codeError) {
+        console.error("Config Error:", codeError);
+        setErrorMsg(`Errore Database: ${codeError.message}. Contatta l'assistenza.`);
+        setIsValidating(false);
+        return;
+      }
+
+      if (!data) {
+        setErrorMsg("Configurazione non trovata per questo locale. Contatta il titolare.");
+        setIsValidating(false);
+        return;
+      }
+
+      if (data.value.trim().toUpperCase() !== secretCode.trim().toUpperCase()) {
+        setErrorMsg("Il codice inserito non è corretto per questa struttura.");
         setIsValidating(false);
         return;
       }
