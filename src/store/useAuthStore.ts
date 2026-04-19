@@ -95,7 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const targetVenueId = explicitVenueId || useAuthStore.getState().venueId;
       
-      const { data, error } = await supabase.auth.signUp({ 
+      const { error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
