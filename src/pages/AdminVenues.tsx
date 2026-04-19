@@ -22,13 +22,11 @@ export default function AdminVenues() {
   const [isCreating, setIsCreating] = useState(false);
 
   const fetchVenues = async () => {
-    setIsLoading(true);
     const { data } = await supabase
       .from('venues')
       .select('*')
       .order('created_at', { ascending: false });
     if (data) setVenues(data);
-    setIsLoading(false);
   };
 
   useEffect(() => {
