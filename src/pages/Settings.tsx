@@ -90,13 +90,27 @@ export default function Settings() {
             <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Usato dallo Staff per registrarsi</p>
           </div>
         </div>
-        
-        <div className="flex gap-2 mb-4">
-          <div className="flex-1 bg-black/40 rounded-lg border border-muted/20 px-4 flex items-center h-12">
-            <span className="text-xl font-mono font-black tracking-widest text-primary italic">{regCode}</span>
+
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="flex gap-2">
+            <div className="flex-1 bg-black/40 rounded-lg border border-muted/20 px-4 flex items-center h-12">
+              <span className="text-xl font-mono font-black tracking-widest text-primary italic">{regCode}</span>
+            </div>
+            <Button variant="outline" size="icon" className="h-12 w-12" onClick={fetchData}>
+              <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+            </Button>
           </div>
-          <Button variant="outline" size="icon" className="h-12 w-12" onClick={fetchData}>
-            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+          
+          <Button 
+            variant="secondary" 
+            className="w-full text-[10px] font-bold uppercase tracking-widest h-9 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+            onClick={() => {
+              const link = `${window.location.origin}/register`;
+              navigator.clipboard.writeText(`Ciao! Registrati su LiquidStock usando questo link: ${link} e il codice segreto: ${regCode}`);
+              alert("✅ Link e codice copiati! Ora puoi incollarli su WhatsApp.");
+            }}
+          >
+            Copia Link e Messaggio Invito
           </Button>
         </div>
 
