@@ -22,10 +22,8 @@ export function VenueSwitcher() {
   }, [role]);
 
   const fetchVenues = async () => {
-    setIsLoading(true);
     const { data } = await supabase.from('venues').select('id, name');
     if (data) setVenues(data);
-    setIsLoading(false);
   };
 
   if (role !== 'super_admin') return null;
