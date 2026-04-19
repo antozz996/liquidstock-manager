@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Building2, Plus, Copy, Trash2, Globe, ShieldCheck } from "lucide-react";
+import { Building2, Plus, Copy, Globe, ShieldCheck } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
 
 interface Venue {
@@ -19,7 +19,6 @@ export default function AdminVenues() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
   const fetchVenues = async () => {

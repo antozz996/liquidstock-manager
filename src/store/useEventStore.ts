@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from './useAuthStore';
 import type { Event, EventStock, Product } from '../types';
 import { calculateEventReport } from '../lib/calculations';
 

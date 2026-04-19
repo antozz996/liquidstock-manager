@@ -14,7 +14,6 @@ export function VenueSwitcher() {
   const { role, venueId, switchVenue } = useAuthStore();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (role === 'super_admin') {

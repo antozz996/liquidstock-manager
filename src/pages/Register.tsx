@@ -102,8 +102,8 @@ export default function Register() {
             <div className="text-center py-4 space-y-4">
               <AlertCircle size={40} className="mx-auto text-accent-red opacity-50" />
               <p className="text-sm text-muted-foreground">Link non valido. Contatta il titolare del locale per farti mandare l'invito segreto.</p>
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login">Torna indietro</Link>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
+                Torna indietro
               </Button>
             </div>
           ) : (

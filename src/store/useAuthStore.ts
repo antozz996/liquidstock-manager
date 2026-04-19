@@ -8,7 +8,7 @@ interface AuthState {
   venueId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role: 'admin' | 'staff', explicitVenueId?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
   switchVenue: (venueId: string) => void;
