@@ -10,32 +10,46 @@ export default function SurgicalSetup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
   const { signUp, isLoading } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Pulsante cliccato! Avvio inizializzazione...");
+    console.log("CLICK - handleSetup avviato");
     setErrorMsg("");
+    setStatusMsg("Inizializzazione sistema in corso...");
+
+    if (!email.includes("@")) {
+      setErrorMsg("Inserisci un indirizzo email valido.");
+      setStatusMsg("");
+      return;
+    }
 
     if (password.length < 6) {
       setErrorMsg("La password deve essere di almeno 6 caratteri.");
+      setStatusMsg("");
       return;
     }
 
     try {
+      console.log("Lancio signUp store...");
+      setStatusMsg("Contatto il database...");
       const { error } = await signUp(email, password, 'admin');
       if (error) {
-        console.error("Errore ricevuto dal setup:", error);
-        setErrorMsg("Errore durante il setup: " + (error.message || "Riprova."));
+        console.error("Errore da signUp:", error);
+        setErrorMsg("Errore: " + (error.message || "Riprova tra un attacco."));
+        setStatusMsg("");
       } else {
-        console.log("Successo! Admin creato.");
-        alert("✅ Admin Registrato con Successo! Ora verrai reindirizzato.");
-        navigate("/");
+        console.log("Setup completato con successo!");
+        setStatusMsg("Sistema pronto!");
+        alert("✅ Admin Registrato! Benvenuto.\nOra verrai reindirizzato al login.");
+        navigate("/login");
       }
     } catch (err) {
-      console.error("Crash durante il setup:", err);
+      console.error("CRASH durante il setup:", err);
       setErrorMsg("Errore critico durante la registrazione.");
+      setStatusMsg("");
     }
   };
 
@@ -53,7 +67,7 @@ export default function SurgicalSetup() {
         </div>
 
         <Card className="p-6 border-muted/20 bg-card/40 backdrop-blur-md shadow-2xl">
-          <form onSubmit={handleSetup} className="space-y-5">
+          <form onSubmit={handleSetup} noValidate className="space-y-5">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Master</label>
               <div className="relative">
@@ -84,10 +98,13 @@ export default function SurgicalSetup() {
               </div>
             </div>
 
-            {errorMsg && (
-              <div className="p-3 bg-accent-red/10 border border-accent-red/20 rounded-lg flex items-center gap-2 text-xs text-accent-red">
-                <AlertCircle size={14} />
-                {errorMsg}
+            {(errorMsg || statusMsg) && (
+              <div className={cn(
+                "p-3 border rounded-lg flex items-center gap-2 text-xs",
+                errorMsg ? "bg-accent-red/10 border-accent-red/20 text-accent-red" : "bg-primary/10 border-primary/20 text-primary animate-pulse"
+              )}>
+                {errorMsg ? <AlertCircle size={14} /> : <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />}
+                {errorMsg || statusMsg}
               </div>
             )}
 
@@ -96,13 +113,13 @@ export default function SurgicalSetup() {
               className="w-full h-12 text-sm font-bold uppercase tracking-tight bg-accent-orange hover:bg-accent-orange/90 text-black shadow-lg shadow-accent-orange/20"
               disabled={isLoading}
             >
-              {isLoading ? "Creazione in corso..." : "Inizializza Sistema"}
+              {isLoading ? "Avvio in corso..." : "Inizializza Sistema"}
             </Button>
           </form>
         </Card>
 
         <p className="text-center text-[10px] text-muted-foreground font-medium uppercase leading-relaxed px-4">
-          Questa pagina è ad uso esclusivo del proprietario. <br/>Una volta registrato l'admin, questa rotta diventerà inattiva.
+          Una volta registrato l'admin tramite questa pagina, potrai accedere normalmente dal login.
         </p>
       </div>
     </div>
