@@ -105,7 +105,7 @@ export default function Settings() {
             variant="secondary" 
             className="w-full text-[10px] font-bold uppercase tracking-widest h-9 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
             onClick={() => {
-              const link = `${window.location.origin}/register`;
+              const link = `${window.location.origin}/register?v=${useAuthStore.getState().venueId}`;
               navigator.clipboard.writeText(`Ciao! Registrati su LiquidStock usando questo link: ${link} e il codice segreto: ${regCode}`);
               alert("✅ Link e codice copiati! Ora puoi incollarli su WhatsApp.");
             }}
