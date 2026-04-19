@@ -13,6 +13,7 @@ import Analytics from "./pages/Analytics";
 import SurgicalSetup from "./pages/SurgicalSetup";
 import Settings from "./pages/Settings";
 import Register from "./pages/Register";
+import AdminVenues from "./pages/AdminVenues";
 
 function App() {
   const { user, isLoading, checkUser, role } = useAuthStore();
@@ -42,8 +43,9 @@ function App() {
           <Route path="/events/*" element={<EventsSpace />} />
           <Route path="/history/*" element={<HistoryArea />} />
           <Route path="/history/:eventId" element={<ReportPage />} />
-          {role === 'admin' && <Route path="/analytics" element={<Analytics />} />}
-          {role === 'admin' && <Route path="/team" element={<Settings />} />}
+          {(role === 'admin' || role === 'super_admin') && <Route path="/analytics" element={<Analytics />} />}
+          {(role === 'admin' || role === 'super_admin') && <Route path="/team" element={<Settings />} />}
+          {role === 'super_admin' && <Route path="/admin/venues" element={<AdminVenues />} />}
         </Route>
       </Routes>
     </Router>

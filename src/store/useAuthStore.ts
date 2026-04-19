@@ -4,17 +4,20 @@ import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
   user: User | null;
-  role: 'admin' | 'staff' | null;
+  role: 'admin' | 'staff' | 'super_admin' | null;
+  venueId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
+  switchVenue: (venueId: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   role: null,
+  venueId: null,
   isLoading: true,
 
   checkUser: async () => {
@@ -22,35 +25,35 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // 1. Recupera il ruolo dalla tabella profiles
+      // 1. Recupera il ruolo e il locale dalla tabella profiles
       let { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, venue_id')
         .eq('id', user.id)
         .single();
       
-      // 2. Se l'utente è loggato ma il profilo non esiste (es. registrazione interrotta)
-      //    e il sistema è vuoto, lo promuoviamo ad Admin
+      // 2. Auto-riparazione se il profilo manca
       if (!profile) {
-        const { count } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-        
+        const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
         if (count === 0) {
-          console.log("Sistema vergine rilevato. Promozione utente corrente ad ADMIN...");
+          const { data: firstVenue } = await supabase.from('venues').select('id').limit(1).single();
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
-            .insert([{ id: user.id, role: 'admin' }])
+            .insert([{ id: user.id, role: 'admin', venue_id: firstVenue?.id }])
             .select()
             .single();
-          
           if (!createError) profile = newProfile;
         }
       }
         
-      set({ user, role: profile?.role || 'staff', isLoading: false });
+      set({ 
+        user, 
+        role: profile?.role || 'staff', 
+        venueId: profile?.venue_id || null,
+        isLoading: false 
+      });
     } else {
-      set({ user: null, role: null, isLoading: false });
+      set({ user: null, role: null, venueId: null, isLoading: false });
     }
   },
 
@@ -59,35 +62,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (data.user) {
-      // 1. Prova a recuperare il profilo
-      let { data: profile } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, venue_id')
         .eq('id', data.user.id)
         .single();
-      
-      // 2. Se il profilo non esiste, verifichiamo se è il primo utente in assoluto
-      if (!profile) {
-        console.log("Profilo non trovato, verifico se è il primo sistema...");
-        const { count } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-        
-        if (count === 0) {
-          console.log("Primo utente rilevato! Assegnazione ruolo ADMIN...");
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{ id: data.user.id, role: 'admin' }])
-            .select()
-            .single();
-          
-          if (!createError) {
-            profile = newProfile;
-          }
-        }
-      }
 
-      set({ user: data.user, role: profile?.role || 'staff', isLoading: false });
+      set({ 
+        user: data.user, 
+        role: profile?.role || 'staff', 
+        venueId: profile?.venue_id || null,
+        isLoading: false 
+      });
     } else {
       set({ isLoading: false });
     }
@@ -95,8 +81,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     return { error };
   },
 
-  signUp: async (email, password, role) => {
-    console.log("Tentativo di registrazione per:", email, role);
+  switchVenue: (venueId) => {
+    console.log("Switch locale a:", venueId);
+    set({ venueId });
+    // Dopo il cambio, ricarichiamo i dati (l'app reagirà allo stato)
+    window.location.reload(); 
+  },
+
+  signUp: async (email, password, role, explicitVenueId) => {
+    console.log("Tentativo di registrazione per:", email, role, explicitVenueId);
     set({ isLoading: true });
     
     try {
@@ -109,41 +102,30 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       if (data.user) {
-        console.log("Utente creato, inserisco profilo...");
+        // Usa il locale esplicito (onboarding) o quello dello store (invito admin)
+        const targetVenueId = explicitVenueId || useAuthStore.getState().venueId;
+        
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert([{ id: data.user.id, role }]);
+          .insert([{ id: data.user.id, role, venue_id: targetVenueId }]);
           
         if (!profileError) {
-          console.log("Profilo creato con successo!");
-          set({ user: data.user, role, isLoading: false });
+          set({ user: data.user, role, venueId: targetVenueId, isLoading: false });
           return { error: null };
         } else {
-          console.error("Errore creazione profilo:", profileError);
           set({ isLoading: false });
           return { error: profileError };
         }
-      } else {
-        console.warn("Registrazione completata ma nessun utente restituito (richiesto conferma email?).");
-        set({ isLoading: false });
-        // Se l'utente è creato ma non abbiamo il profilo (perché data.user è nullo o altro), 
-        // ritorniamo comunque successo se non c'è errore auth.
-        return { error: null };
       }
+      return { error: null };
     } catch (err) {
-      console.error("Errore imprevisto nello store:", err);
       set({ isLoading: false });
       return { error: err };
     }
   },
 
   signOut: async () => {
-    console.log("Logout immediato in corso...");
-    set({ user: null, role: null, isLoading: false });
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Errore durante il logout remoto:", err);
-    }
+    set({ user: null, role: null, venueId: null, isLoading: false });
+    await supabase.auth.signOut();
   }
 }));

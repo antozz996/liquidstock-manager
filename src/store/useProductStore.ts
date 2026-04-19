@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { sortProducts } from '../lib/utils';
+import { useAuthStore } from './useAuthStore';
 import type { Product } from '../types';
 
 interface ProductState {
@@ -21,6 +22,7 @@ export const useProductStore = create<ProductState>((set) => ({
 
   fetchProducts: async () => {
     set({ isLoading: true });
+    // Nota: RLS filtrerà automaticamente per venue_id sul server
     const { data, error } = await supabase
       .from('products')
       .select('*')
@@ -50,7 +52,8 @@ export const useProductStore = create<ProductState>((set) => ({
 
   restockProduct: async (productId, quantity, note) => {
     set({ isLoading: true });
-    // 1. Prendi stock attuale
+    const { venueId } = useAuthStore.getState();
+    
     const { data: current } = await supabase
       .from('products')
       .select('current_stock')
@@ -60,16 +63,19 @@ export const useProductStore = create<ProductState>((set) => ({
     if (current) {
       const newStock = (current.current_stock || 0) + quantity;
       
-      // 2. Aggiorna stock
       await supabase
         .from('products')
         .update({ current_stock: newStock })
         .eq('id', productId);
 
-      // 3. Registra log
       await supabase
         .from('restock_log')
-        .insert([{ product_id: productId, qty_added: quantity, note: note || 'Rifornimento manuale' }]);
+        .insert([{ 
+          product_id: productId, 
+          qty_added: quantity, 
+          note: note || 'Rifornimento manuale',
+          venue_id: venueId 
+        }]);
 
       set(state => ({
         products: state.products.map(p => p.id === productId ? { ...p, current_stock: newStock } : p)
@@ -79,9 +85,10 @@ export const useProductStore = create<ProductState>((set) => ({
   },
 
   addProduct: async (product) => {
+    const { venueId } = useAuthStore.getState();
     const { data, error } = await supabase
       .from('products')
-      .insert([product])
+      .insert([{ ...product, venue_id: venueId }])
       .select()
       .single();
       
@@ -92,9 +99,12 @@ export const useProductStore = create<ProductState>((set) => ({
 
   bulkAddProducts: async (products) => {
     set({ isLoading: true });
+    const { venueId } = useAuthStore.getState();
+    const productsWithVenue = products.map(p => ({ ...p, venue_id: venueId }));
+    
     const { data, error } = await supabase
       .from('products')
-      .insert(products)
+      .insert(productsWithVenue)
       .select();
       
     if (!error && data) {

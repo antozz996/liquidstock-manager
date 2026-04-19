@@ -50,11 +50,12 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   openNewEvent: async (name, date, products) => {
     set({ isLoading: true });
+    const { venueId } = useAuthStore.getState();
     
-    // 1. Inserisci l'evento
+    // 1. Inserisci l'evento con il locale di appartenenza
     const { data: newEvent } = await supabase
       .from('events')
-      .insert([{ name, date, status: 'open' }])
+      .insert([{ name, date, status: 'open', venue_id: venueId }])
       .select()
       .single();
       
@@ -90,6 +91,7 @@ export const useEventStore = create<EventState>((set, get) => ({
   closeEvent: async () => {
     const { currentEvent, eventStocks } = get();
     if (!currentEvent) return;
+    const { venueId } = useAuthStore.getState();
     
     set({ isLoading: true });
     // Questo andrebbe fatto con una Remote Procedure (RPC) per transazione sicura,
@@ -127,13 +129,14 @@ export const useEventStore = create<EventState>((set, get) => ({
       }
     }
 
-    // 4. Genera e salva il Report finale
+    // 4. Genera e salva il Report finale con venue_id
     const summary = calculateEventReport(eventStocks);
     await supabase.from('reports').insert([{
       event_id: currentEvent.id,
       total_cost_consumed: summary.total_cost_consumed,
       total_stock_value_cost: summary.total_stock_value_cost,
-      details_json: summary.details_json
+      details_json: summary.details_json,
+      venue_id: venueId
     }]);
 
     set({ currentEvent: null, eventStocks: [] });
