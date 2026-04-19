@@ -15,6 +15,7 @@ export default function SurgicalSetup() {
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Pulsante cliccato! Avvio inizializzazione...");
     setErrorMsg("");
 
     if (password.length < 6) {
@@ -22,12 +23,19 @@ export default function SurgicalSetup() {
       return;
     }
 
-    const { error } = await signUp(email, password, 'admin');
-    if (error) {
-      setErrorMsg("Errore durante il setup: " + (error.message || "Riprova."));
-    } else {
-      alert("✅ Admin Registrato con Successo! Ora verrai reindirizzato.");
-      navigate("/");
+    try {
+      const { error } = await signUp(email, password, 'admin');
+      if (error) {
+        console.error("Errore ricevuto dal setup:", error);
+        setErrorMsg("Errore durante il setup: " + (error.message || "Riprova."));
+      } else {
+        console.log("Successo! Admin creato.");
+        alert("✅ Admin Registrato con Successo! Ora verrai reindirizzato.");
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("Crash durante il setup:", err);
+      setErrorMsg("Errore critico durante la registrazione.");
     }
   };
 

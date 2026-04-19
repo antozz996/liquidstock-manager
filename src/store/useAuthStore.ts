@@ -54,26 +54,45 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUp: async (email, password, role) => {
+    console.log("Tentativo di registrazione per:", email, role);
     set({ isLoading: true });
-    const { data, error } = await supabase.auth.signUp({ email, password });
     
-    if (data.user) {
-      // Crea il profilo associato
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{ id: data.user.id, role }]);
-        
-      if (!profileError) {
-        set({ user: data.user, role, isLoading: false });
-      } else {
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      
+      if (error) {
+        console.error("Errore Auth SignUp:", error);
         set({ isLoading: false });
-        return { error: profileError };
+        return { error };
       }
-    } else {
+
+      if (data.user) {
+        console.log("Utente creato, inserisco profilo...");
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{ id: data.user.id, role }]);
+          
+        if (!profileError) {
+          console.log("Profilo creato con successo!");
+          set({ user: data.user, role, isLoading: false });
+          return { error: null };
+        } else {
+          console.error("Errore creazione profilo:", profileError);
+          set({ isLoading: false });
+          return { error: profileError };
+        }
+      } else {
+        console.warn("Registrazione completata ma nessun utente restituito (richiesto conferma email?).");
+        set({ isLoading: false });
+        // Se l'utente è creato ma non abbiamo il profilo (perché data.user è nullo o altro), 
+        // ritorniamo comunque successo se non c'è errore auth.
+        return { error: null };
+      }
+    } catch (err) {
+      console.error("Errore imprevisto nello store:", err);
       set({ isLoading: false });
+      return { error: err };
     }
-    
-    return { error };
   },
 
   signOut: async () => {
