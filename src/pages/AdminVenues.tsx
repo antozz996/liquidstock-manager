@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Building2, Plus, Copy, Globe, ShieldCheck, Edit2, Check, X, UserCog, Users } from "lucide-react";
+import { Building2, Plus, Globe, ShieldCheck, Edit2, Check, X, UserCog, Users } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
 
 interface Venue {
