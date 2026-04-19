@@ -7,6 +7,7 @@ interface AuthState {
   role: 'admin' | 'staff' | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role: 'admin' | 'staff') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
 }
@@ -45,6 +46,29 @@ export const useAuthStore = create<AuthState>((set) => ({
         .eq('id', data.user.id)
         .single();
       set({ user: data.user, role: profile?.role || 'staff', isLoading: false });
+    } else {
+      set({ isLoading: false });
+    }
+    
+    return { error };
+  },
+
+  signUp: async (email, password, role) => {
+    set({ isLoading: true });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    
+    if (data.user) {
+      // Crea il profilo associato
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: data.user.id, role }]);
+        
+      if (!profileError) {
+        set({ user: data.user, role, isLoading: false });
+      } else {
+        set({ isLoading: false });
+        return { error: profileError };
+      }
     } else {
       set({ isLoading: false });
     }

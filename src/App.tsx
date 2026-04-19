@@ -10,6 +10,9 @@ import HistoryArea from "./pages/History";
 import ReportPage from "./pages/Report";
 import Login from "./pages/Login";
 import Analytics from "./pages/Analytics";
+import SurgicalSetup from "./pages/SurgicalSetup";
+import Settings from "./pages/Settings";
+import Register from "./pages/Register";
 
 function App() {
   const { user, isLoading, checkUser, role } = useAuthStore();
@@ -30,6 +33,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
+        <Route path="/surgical-setup" element={<SurgicalSetup />} />
         
         <Route element={user ? <AppShell /> : <Navigate to="/login" />}>
           <Route path="/" element={<Dashboard />} />
@@ -38,6 +43,7 @@ function App() {
           <Route path="/history/*" element={<HistoryArea />} />
           <Route path="/history/:eventId" element={<ReportPage />} />
           {role === 'admin' && <Route path="/analytics" element={<Analytics />} />}
+          {role === 'admin' && <Route path="/team" element={<Settings />} />}
         </Route>
       </Routes>
     </Router>

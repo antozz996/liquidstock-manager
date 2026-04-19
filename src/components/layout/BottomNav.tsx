@@ -11,6 +11,7 @@ export function BottomNav() {
     { name: "Home", path: "/", icon: Home },
     ...(role === 'admin' ? [
       { name: "Analisi", path: "/analytics", icon: BarChart3 },
+      { name: "Team", path: "/team", icon: Users },
       { name: "Storia", path: "/history", icon: History }
     ] : []),
     { name: "Magazzino", path: "/products", icon: Package },
