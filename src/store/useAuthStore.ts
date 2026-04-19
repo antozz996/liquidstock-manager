@@ -93,7 +93,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const targetVenueId = explicitVenueId || useAuthStore.getState().venueId;
+      
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            role: role,
+            venue_id: targetVenueId
+          }
+        }
+      });
       
       if (error) {
         console.error("Errore Auth SignUp:", error);
@@ -101,22 +112,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         return { error };
       }
 
-      if (data.user) {
-        // Usa il locale esplicito (onboarding) o quello dello store (invito admin)
-        const targetVenueId = explicitVenueId || useAuthStore.getState().venueId;
-        
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{ id: data.user.id, role, venue_id: targetVenueId }]);
-          
-        if (!profileError) {
-          set({ user: data.user, role, venueId: targetVenueId, isLoading: false });
-          return { error: null };
-        } else {
-          set({ isLoading: false });
-          return { error: profileError };
-        }
-      }
+      // La creazione del profilo ora è delegata al TRIGGER del database
+      // per garantire che avvenga anche se l'utente deve ancora confermare l'email.
+      set({ isLoading: false });
       return { error: null };
     } catch (err) {
       set({ isLoading: false });
