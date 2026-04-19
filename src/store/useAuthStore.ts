@@ -119,7 +119,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, role: null });
+    console.log("Logout immediato in corso...");
+    set({ user: null, role: null, isLoading: false });
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Errore durante il logout remoto:", err);
+    }
   }
 }));
