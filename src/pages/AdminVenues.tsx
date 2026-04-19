@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Building2, Plus, Copy, Globe, ShieldCheck } from "lucide-react";
+import { Building2, Plus, Copy, Globe, ShieldCheck, Edit2, Check, X, UserCog, Users } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
 
 interface Venue {
@@ -20,6 +20,10 @@ export default function AdminVenues() {
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Editing state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   const fetchVenues = async () => {
     const { data } = await supabase
@@ -32,6 +36,19 @@ export default function AdminVenues() {
   useEffect(() => {
     fetchVenues();
   }, []);
+
+  const handleUpdateVenue = async (id: string) => {
+    if (!editName) return;
+    const { error } = await supabase
+      .from('venues')
+      .update({ name: editName })
+      .eq('id', id);
+    
+    if (!error) {
+      setVenues(venues.map(v => v.id === id ? { ...v, name: editName } : v));
+      setEditingId(null);
+    }
+  };
 
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,10 +86,10 @@ export default function AdminVenues() {
     }
   };
 
-  const copyInviteLink = async (venueId: string) => {
-    const link = `${window.location.origin}/register?v=${venueId}`;
+  const copyInviteLink = async (venueId: string, targetRole: 'admin' | 'staff') => {
+    const link = `${window.location.origin}/register?v=${venueId}&r=${targetRole}`;
     await navigator.clipboard.writeText(link);
-    alert("✅ Link d'invito segreto copiato negli appunti!");
+    alert(`✅ Link d'invito per ${targetRole.toUpperCase()} copiato negli appunti!`);
   };
 
   if (role !== 'super_admin') {
@@ -114,39 +131,72 @@ export default function AdminVenues() {
 
       <div className="space-y-4 pt-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Locali Attivi ({venues.length})</h3>
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-4">
           {venues.map((v) => (
-            <Card key={v.id} className="p-4 border-white/5 bg-white/5 hover:border-accent-orange/30 transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center text-accent-orange border border-accent-orange/20">
-                    <Building2 size={24} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-lg leading-tight uppercase tracking-tight">{v.name}</h4>
-                    <p className="text-[10px] text-muted-foreground uppercase font-black opacity-60">ID: {v.id.slice(0, 8)}</p>
-                  </div>
+            <Card key={v.id} className="p-4 border-white/5 bg-white/5 hover:border-accent-orange/30 transition-all overflow-hidden relative">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between">
+                  {editingId === v.id ? (
+                    <div className="flex-1 flex gap-2">
+                      <Input 
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="h-10 bg-black/60 border-accent-orange/50 text-white"
+                        autoFocus
+                      />
+                      <Button size="icon" className="h-10 w-10 bg-green-500/20 text-green-500 hover:bg-green-500/40" onClick={() => handleUpdateVenue(v.id)}>
+                        <Check size={18} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => setEditingId(null)}>
+                        <X size={18} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center text-accent-orange border border-accent-orange/20">
+                        <Building2 size={24} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-white text-lg leading-tight uppercase tracking-tight">{v.name}</h4>
+                          <button 
+                            onClick={() => { setEditingId(v.id); setEditName(v.name); }}
+                            className="text-muted-foreground hover:text-white transition-colors"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black opacity-60">ID: {v.id.slice(0, 8)}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-2">
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    variant="secondary" 
+                    className="flex-1 gap-2 h-11 bg-accent-orange/20 text-accent-orange border-accent-orange/20 hover:bg-accent-orange/30 text-[10px] font-black uppercase tracking-widest"
+                    onClick={() => copyInviteLink(v.id, 'admin')}
+                  >
+                    <UserCog size={16} /> Link Proprietario
+                  </Button>
                   <Button 
                     variant="outline" 
-                    size="icon" 
-                    className="h-10 w-10 border-white/10"
-                    onClick={() => copyInviteLink(v.id)}
-                    title="Copia Link Invito"
+                    className="flex-1 gap-2 h-11 border-white/10 text-muted-foreground hover:bg-white/5 text-[10px] font-black uppercase tracking-widest"
+                    onClick={() => copyInviteLink(v.id, 'staff')}
                   >
-                    <Copy size={16} />
+                    <Users size={16} /> Link Staff
                   </Button>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Globe size={12} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Attivo dal {formatDateTime(v.created_at)}</span>
-                </div>
-                <div className="px-2 py-1 rounded bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/20">
-                  Operativo
+                <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Globe size={12} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Attivo dal {formatDateTime(v.created_at)}</span>
+                  </div>
+                  <div className="px-2 py-1 rounded bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest border border-green-500/20">
+                    Operativo
+                  </div>
                 </div>
               </div>
             </Card>
@@ -156,3 +206,4 @@ export default function AdminVenues() {
     </div>
   );
 }
+

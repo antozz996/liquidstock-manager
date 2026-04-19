@@ -10,6 +10,7 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 export default function Register() {
   const [searchParams] = useSearchParams();
   const venueId = searchParams.get('v');
+  const roleParam = searchParams.get('r') as 'admin' | 'staff' || 'staff';
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,12 +63,12 @@ export default function Register() {
         return;
       }
 
-      // 2. Procede con registrazione
-      const { error } = await signUp(email, password, 'staff', venueId);
+      // 2. Procede con registrazione con il ruolo passato nel link
+      const { error } = await signUp(email, password, roleParam, venueId);
       if (error) {
         setErrorMsg("Errore registrazione: " + (error.message || "Riprova."));
       } else {
-        alert(`✅ Registrazione completata! Benvenuto nel team di ${venueName || 'locale'}.`);
+        alert(`✅ Registrazione completata! Benvenuto nel team di ${venueName || 'locale'} come ${roleParam.toUpperCase()}.`);
         navigate("/");
       }
     } catch (err) {
@@ -76,6 +77,8 @@ export default function Register() {
       setIsValidating(false);
     }
   };
+
+  const isOwnerInvite = roleParam === 'admin';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0a0a]">
@@ -90,10 +93,10 @@ export default function Register() {
             {venueName ? <Building2 size={32} /> : <UserPlus size={32} />}
           </div>
           <h1 className="text-2xl font-black tracking-tighter text-white uppercase italic leading-tight">
-            {venueName ? `Team ${venueName}` : 'Registrazione Staff'}
+            {venueName ? `${venueName}` : 'Registrazione'}
           </h1>
           <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest">
-            {venueName ? 'Unisciti alla struttura' : 'Entra nel Team LiquidStock'}
+            {isOwnerInvite ? 'Attivazione Account Titolare' : 'Unisciti al Team della struttura'}
           </p>
         </div>
 
@@ -109,7 +112,7 @@ export default function Register() {
           ) : (
             <form onSubmit={handleRegister} className="space-y-5">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Personale</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email {isOwnerInvite ? 'Titolare' : 'Personale'}</label>
                 <Input 
                   type="email"
                   placeholder="nome@gmail.com"
@@ -159,16 +162,17 @@ export default function Register() {
                 className="w-full h-12 text-sm font-bold uppercase tracking-tight shadow-lg shadow-primary/20"
                 disabled={isLoading || isValidating}
               >
-                {isLoading || isValidating ? "Verifica in corso..." : "Unisciti al Team"}
+                {isLoading || isValidating ? "Verifica in corso..." : isOwnerInvite ? "Attiva Account Titolare" : "Unisciti al Team"}
               </Button>
             </form>
           )}
         </Card>
 
         <p className="text-center text-[10px] text-muted-foreground font-medium uppercase tracking-[0.1em]">
-          {venueId ? "Assicurati di avere il codice segreto fornito dal gestore." : "Registrazione protetta da crittografia multi-tenant."}
+          {venueId ? "Registrazione protetta da crittografia multi-tenant." : "Contatta il supporto se riscontri problemi."}
         </p>
       </div>
     </div>
   );
 }
+
