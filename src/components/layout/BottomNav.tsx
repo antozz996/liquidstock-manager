@@ -1,4 +1,4 @@
-import { Home, Package, CalendarClock, History, BarChart3, LogOut } from "lucide-react";
+import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../store/useAuthStore";
