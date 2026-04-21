@@ -42,38 +42,14 @@ export default function Analytics() {
     );
   }
 
-  // 1. Dati per Trend Costi (Line Chart)
-  const trendData = reports.slice(-10).map(r => ({
-    name: r.event?.name.slice(0, 10),
-    costo: r.total_cost_consumed
-  }));
-
-  // 2. Dati per Top Prodotti (Aggregati dai JSON detials)
-  const productConsumption: Record<string, number> = {};
-  reports.forEach(r => {
-    r.details_json.forEach((row: any) => {
-      if (!productConsumption[row.product?.name]) productConsumption[row.product?.name] = 0;
-      productConsumption[row.product?.name] += row.consumed || 0;
-    });
-  });
-
-  const topProducts = Object.entries(productConsumption)
-    .map(([name, qty]) => ({ name, qty }))
-    .sort((a, b) => b.qty - a.qty)
-    .slice(0, 5);
-
-  // 3. Dati per Categorie (Pie Chart)
-  const categoryCost: Record<string, number> = {};
-  reports.forEach(r => {
-    r.details_json.forEach((row: any) => {
-      if (!categoryCost[row.product?.category]) categoryCost[row.product?.category] = 0;
-      categoryCost[row.product?.category] += row.cost_value || 0;
-    });
-  });
-
-  const categoryData = Object.entries(categoryCost)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
+  // 4. Dati per Volume Consumato (Area Chart)
+  const volumeData = reports.map(r => {
+    const totalVolume = r.details_json.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0);
+    return {
+      name: r.event?.name.slice(0, 10),
+      volume: totalVolume
+    };
+  }).slice(-15); // Ultime 15 serate
 
   return (
     <div className="space-y-6 pt-4 pb-24">
@@ -83,20 +59,23 @@ export default function Analytics() {
       </div>
 
       <div className="grid gap-6">
-        {/* Top Prodotti - Bar Chart Vertical */}
-        <Card className="p-5 border-muted/20 bg-card/40">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Top 5 Prodotti Consumati (Qtà)</h3>
+        {/* Trend Volume Consumato - Area Chart */}
+        <Card className="p-5 border-muted/20 bg-card/40 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <TrendingUp size={80} />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Volume Totale Consumato (Unità)</h3>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topProducts} layout="vertical" margin={{ left: 10, right: 30 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#333" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fill: '#888' }} />
+              <BarChart data={volumeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#888' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#888' }} />
                 <Tooltip 
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                   contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                  formatter={(val: number) => [val, "Unità"]}
                 />
-                <Bar dataKey="qty" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="volume" fill="#F59E0B" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -104,7 +83,7 @@ export default function Analytics() {
 
         {/* Trend Costi Serata - Line Chart */}
         <Card className="p-5 border-muted/20 bg-card/40">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Andamento Costi Ultime 10 Serate</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Andamento Costi Ultime Serate</h3>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
@@ -121,34 +100,55 @@ export default function Analytics() {
           </div>
         </Card>
 
-        {/* Distribuzione spesa per categoria - Pie Chart */}
-        <Card className="p-5 border-muted/20 bg-card/40">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Distribuzione Spesa Merce</h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {categoryData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
-                  formatter={(val: number) => formatCurrency(val)}
-                />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '10px', paddingTop: '20px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+        {/* Grid per Category e Top Products */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Top Prodotti */}
+          <Card className="p-5 border-muted/20 bg-card/40">
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Top 5 Prodotti</h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProducts} layout="vertical" margin={{ left: 10, right: 30 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 8, fill: '#888' }} />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                  />
+                  <Bar dataKey="qty" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Distribuzione spesa per categoria */}
+          <Card className="p-5 border-muted/20 bg-card/40">
+            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Distribuzione Spesa</h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={60}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {categoryData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                    formatter={(val: number) => formatCurrency(val)}
+                  />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '8px', paddingTop: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

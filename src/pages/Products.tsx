@@ -44,7 +44,7 @@ export default function ProductsList() {
     <div className="space-y-4 pt-4 pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Magazzino</h1>
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'super_admin') && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -70,7 +70,7 @@ export default function ProductsList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'super_admin') && (
           <>
             <Button size="icon" className="h-10 w-10 shrink-0" onClick={() => setIsAddOpen(true)}>
               <Plus className="h-5 w-5" />
@@ -114,17 +114,17 @@ export default function ProductsList() {
                     key={p.id} 
                     className={cn(
                       "p-4 flex justify-between items-center transition-all",
-                      role === 'admin' ? "cursor-pointer hover:border-primary/50 active:scale-[0.98]" : "cursor-default",
+                      (role === 'admin' || role === 'super_admin') ? "cursor-pointer hover:border-primary/50 active:scale-[0.98]" : "cursor-default",
                       !p.is_active && "opacity-50"
                     )}
                     onClick={() => {
-                      if(role === 'admin') setSelectedProduct(p);
+                      if(role === 'admin' || role === 'super_admin') setSelectedProduct(p);
                     }}
                   >
                     <div>
                       <p className="font-semibold text-white">{p.name}</p>
                       <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
-                        {role === 'admin' ? (
+                        {(role === 'admin' || role === 'super_admin') ? (
                           <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
                         ) : (
                           <span className="opacity-40 italic">Cod: {p.id.slice(0, 4)}</span>

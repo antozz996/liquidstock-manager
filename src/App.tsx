@@ -43,8 +43,8 @@ function App() {
           <Route path="/events/*" element={<EventsSpace />} />
           <Route path="/history/*" element={<HistoryArea />} />
           <Route path="/history/:eventId" element={<ReportPage />} />
-          {(role === 'admin' || role === 'super_admin') && <Route path="/analytics" element={<Analytics />} />}
-          {(role === 'admin' || role === 'super_admin') && <Route path="/team" element={<Settings />} />}
+          {(role === 'admin' || role === 'super_admin' || role === 'staff') && <Route path="/analytics" element={<Analytics />} />}
+          {(role === 'admin' || role === 'super_admin' || role === 'staff') && <Route path="/team" element={<Settings />} />}
           {role === 'super_admin' && <Route path="/admin/venues" element={<AdminVenues />} />}
         </Route>
       </Routes>

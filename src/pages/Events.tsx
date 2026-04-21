@@ -52,10 +52,10 @@ export default function EventsSpace() {
           </div>
           <Button 
             className="w-full mt-4" 
-            disabled={!eventName || products.length === 0 || role !== 'admin'}
+            disabled={!eventName || products.length === 0 || (role !== 'admin' && role !== 'staff' && role !== 'super_admin')}
             onClick={() => openNewEvent(eventName, eventDate, products.filter(p => p.is_active))}
           >
-            {role === 'admin' ? "Apri Serata" : "Solo Admin può aprire serate"}
+            {(role === 'admin' || role === 'staff' || role === 'super_admin') ? "Apri Serata" : "Non hai i permessi per aprire serate"}
           </Button>
         </Card>
       </div>
@@ -87,7 +87,7 @@ export default function EventsSpace() {
       <p className="text-sm text-muted-foreground">Conta le bottiglie rimaste nel frigo per calcolare in automatico i consumi e sistemare le giacenze.</p>
 
       {/* Live Summary */}
-      {role === 'admin' && (
+      {(role === 'admin' || role === 'staff' || role === 'super_admin') && (
         <div className="grid grid-cols-1 gap-3 mt-4">
           <div className="bg-card border border-muted/30 p-3 rounded-lg">
             <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Costo Consumato Est.</p>

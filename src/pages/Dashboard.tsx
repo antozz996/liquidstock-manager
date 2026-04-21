@@ -60,7 +60,7 @@ export default function Dashboard() {
           </span>
         </div>
 
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'super_admin') && (
           <div className="rounded-xl border border-muted bg-card p-4 shadow-sm flex flex-col justify-between col-span-2">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Package className="w-5 h-5" />
