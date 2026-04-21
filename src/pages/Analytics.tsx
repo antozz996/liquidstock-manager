@@ -42,9 +42,45 @@ export default function Analytics() {
     );
   }
 
+  // 1. Dati per Trend Costi (Line Chart)
+  const trendData = reports.map(r => ({
+    name: r.event?.name.slice(0, 10),
+    costo: r.total_cost_consumed
+  })).slice(-10);
+
+  // 2. Dati per Top Prodotti (Aggregati dai JSON detials)
+  const productConsumption: Record<string, number> = {};
+  reports.forEach(r => {
+    r.details_json?.forEach((row: any) => {
+      const name = row.product?.name || row.name;
+      if (!name) return;
+      if (!productConsumption[name]) productConsumption[name] = 0;
+      productConsumption[name] += row.consumed || 0;
+    });
+  });
+
+  const topProducts = Object.entries(productConsumption)
+    .map(([name, qty]) => ({ name, qty }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 5);
+
+  // 3. Dati per Categorie (Pie Chart)
+  const categoryCost: Record<string, number> = {};
+  reports.forEach(r => {
+    r.details_json?.forEach((row: any) => {
+      const cat = row.product?.category || row.category || 'Altro';
+      if (!categoryCost[cat]) categoryCost[cat] = 0;
+      categoryCost[cat] += row.cost_value || 0;
+    });
+  });
+
+  const categoryData = Object.entries(categoryCost)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value);
+
   // 4. Dati per Volume Consumato (Area Chart)
   const volumeData = reports.map(r => {
-    const totalVolume = r.details_json.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0);
+    const totalVolume = r.details_json?.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0) || 0;
     return {
       name: r.event?.name.slice(0, 10),
       volume: totalVolume
