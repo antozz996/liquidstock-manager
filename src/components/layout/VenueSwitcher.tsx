@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Building2, ChevronRight, LayoutGrid, ShieldCheck } from 'lucide-react';
+import { Building2, ChevronRight, LayoutGrid, ShieldCheck, UserCog } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { cn } from '../../lib/utils';
@@ -58,12 +58,21 @@ export function VenueSwitcher() {
       {isOpen && (
         <div className="mt-2 grid grid-cols-1 gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <Link 
+            to="/admin/users" 
+            onClick={() => setIsOpen(false)}
+            className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center gap-3 transition-all hover:bg-primary/20 shadow-lg shadow-primary/10"
+          >
+            <UserCog size={18} />
+            <span className="font-black uppercase tracking-widest text-[11px]">👥 Gestione Utenti Globale</span>
+          </Link>
+
+          <Link 
             to="/admin/venues" 
             onClick={() => setIsOpen(false)}
             className="p-3 rounded-xl bg-accent-orange/20 border border-accent-orange/40 text-accent-orange flex items-center gap-3 transition-all hover:bg-accent-orange/30 shadow-lg shadow-accent-orange/10"
           >
             <ShieldCheck size={18} />
-            <span className="font-black uppercase tracking-widest text-[11px]">⚙️ Console Amministrazione SaaS</span>
+            <span className="font-black uppercase tracking-widest text-[11px]">⚙️ Gestione Locali (SaaS)</span>
           </Link>
 
           {/* Anteprima Ruoli per Super Admin */}
