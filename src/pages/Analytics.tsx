@@ -7,26 +7,30 @@ import {
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
 import { TrendingUp, AlertCircle } from "lucide-react";
+import { useAuthStore } from "../store/useAuthStore";
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
 export default function Analytics() {
+  const { venueId } = useAuthStore();
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
+      if (!venueId) return;
       setIsLoading(true);
       const { data } = await supabase
         .from('reports')
         .select('*, event:events(name, date)')
+        .eq('venue_id', venueId)
         .order('generated_at', { ascending: true });
       
       if (data) setReports(data);
       setIsLoading(false);
     }
     fetchStats();
-  }, []);
+  }, [venueId]);
 
   if (isLoading) return <div className="pt-8 text-center animate-pulse text-muted-foreground uppercase text-xs font-bold tracking-widest">Elaborazione Statistiche Chirurugiche...</div>;
 

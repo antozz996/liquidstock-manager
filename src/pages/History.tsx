@@ -20,9 +20,11 @@ import {
 } from "date-fns";
 import { it } from 'date-fns/locale';
 import { cn } from "../lib/utils";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function HistoryArea() {
   const navigate = useNavigate();
+  const { venueId } = useAuthStore();
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -30,16 +32,18 @@ export default function HistoryArea() {
 
   useEffect(() => {
     async function fetchHistory() {
+      if (!venueId) return;
       const { data } = await supabase
         .from('events')
         .select('*')
+        .eq('venue_id', venueId)
         .eq('status', 'closed')
         .order('closed_at', { ascending: false });
       if (data) setPastEvents(data as Event[]);
       setLoading(false);
     }
     fetchHistory();
-  }, []);
+  }, [venueId]);
 
   const downloadReport = async (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();

@@ -22,10 +22,14 @@ export const useEventStore = create<EventState>((set, get) => ({
 
   fetchCurrentEvent: async () => {
     set({ isLoading: true });
+    const { venueId } = useAuthStore.getState();
+    if (!venueId) return;
+
     // Cerca eventuali eventi aperti
     const { data: events } = await supabase
       .from('events')
       .select('*')
+      .eq('venue_id', venueId)
       .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(1);

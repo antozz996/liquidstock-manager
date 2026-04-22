@@ -22,10 +22,17 @@ export const useProductStore = create<ProductState>((set) => ({
 
   fetchProducts: async () => {
     set({ isLoading: true });
-    // Nota: RLS filtrerà automaticamente per venue_id sul server
+    const { venueId } = useAuthStore.getState();
+    
+    if (!venueId) {
+      set({ products: [], isLoading: false });
+      return;
+    }
+
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('venue_id', venueId)
       .order('category', { ascending: true })
       .order('name', { ascending: true });
     
