@@ -91,10 +91,10 @@ export function VenueSwitcher() {
                 onClick={() => setRole('super_admin')}
                 className={cn(
                   "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                  role === 'super_admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                  role === 'super_admin' ? "bg-accent-orange text-white border-accent-orange shadow-[0_0_10px_rgba(255,107,0,0.4)]" : "bg-white/5 border-white/10 text-muted-foreground"
                 )}
               >
-                Reset
+                Super Admin
               </button>
             </div>
           </div>

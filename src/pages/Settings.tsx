@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Users, Key, RefreshCw, Trash2, ShieldCheck } from "lucide-react";
+import { Users, Key, RefreshCw, Trash2, ShieldCheck, Sparkles } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
 
 export default function Settings() {
@@ -172,13 +172,19 @@ export default function Settings() {
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "h-10 w-10 rounded-xl flex items-center justify-center",
-                  p.role === 'admin' ? "bg-accent-orange/10 text-accent-orange" : "bg-white/10 text-muted-foreground"
+                  p.role === 'super_admin' ? "bg-accent-orange/20 text-accent-orange border border-accent-orange/30" :
+                  p.role === 'admin' ? "bg-primary/10 text-primary border border-primary/20" : 
+                  "bg-white/10 text-muted-foreground"
                 )}>
-                  {p.role === 'admin' ? <ShieldCheck size={20} /> : <Users size={20} />}
+                  {p.role === 'super_admin' ? <Sparkles size={20} /> : 
+                   p.role === 'admin' ? <ShieldCheck size={20} /> : 
+                   <Users size={20} />}
                 </div>
                 <div>
                   <p className="font-bold text-white text-sm uppercase leading-tight">{p.full_name || `Utente ${p.id.slice(0, 5)}`}</p>
-                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest leading-none mt-1">{p.role} &bull; {formatDateTime(p.updated_at)}</p>
+                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest leading-none mt-1">
+                    {p.role === 'super_admin' ? 'Super Admin' : p.role === 'admin' ? 'Titolare (Admin)' : 'Staff'} &bull; {formatDateTime(p.updated_at)}
+                  </p>
                 </div>
               </div>
               
