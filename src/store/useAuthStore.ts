@@ -12,6 +12,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
   switchVenue: (venueId: string) => void;
+  setRole: (role: 'admin' | 'staff' | 'super_admin') => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -86,6 +87,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ venueId });
     // Dopo il cambio, ricarichiamo i dati (l'app reagirà allo stato)
     window.location.reload(); 
+  },
+
+  setRole: (role) => {
+    console.log("Switch ruolo a:", role);
+    set({ role });
   },
 
   signUp: async (email, password, role, explicitVenueId, fullName) => {

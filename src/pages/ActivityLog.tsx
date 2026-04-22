@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useProductStore } from "../store/useProductStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { History, Undo2, User, Clock, ArrowRightLeft, PackageMinus, PackagePlus, CalendarX } from "lucide-react";
+import { History, Undo2, User, Clock, PackageMinus, PackagePlus, CalendarX } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
 
 interface LogEntry {

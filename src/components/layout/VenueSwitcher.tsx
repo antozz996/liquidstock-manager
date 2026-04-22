@@ -11,7 +11,7 @@ interface Venue {
 }
 
 export function VenueSwitcher() {
-  const { role, venueId, switchVenue } = useAuthStore();
+  const { role, venueId, switchVenue, setRole } = useAuthStore();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -61,6 +61,43 @@ export function VenueSwitcher() {
             <ShieldCheck size={18} />
             <span className="font-black uppercase tracking-widest text-[11px]">⚙️ Console Amministrazione SaaS</span>
           </Link>
+
+          {/* Anteprima Ruoli per Super Admin */}
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <LayoutGrid size={12} className="text-primary" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-primary">Anteprima Ruolo</span>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setRole('staff')}
+                className={cn(
+                  "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                  role === 'staff' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                )}
+              >
+                Staff
+              </button>
+              <button 
+                onClick={() => setRole('admin')}
+                className={cn(
+                  "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                  role === 'admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                )}
+              >
+                Admin
+              </button>
+              <button 
+                onClick={() => setRole('super_admin')}
+                className={cn(
+                  "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                  role === 'super_admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                )}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
 
           <div className="h-[1px] bg-white/5 my-1" />
 
