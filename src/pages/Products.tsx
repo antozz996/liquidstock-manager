@@ -123,11 +123,14 @@ export default function ProductsList() {
                   >
                     <div>
                       <p className="font-semibold text-white">{p.name}</p>
-                      <div className="flex gap-2 text-xs mt-1 text-muted-foreground">
+                      <div className="flex flex-col gap-1 mt-1">
                         {(role === 'admin' || role === 'super_admin') ? (
-                          <span>Valore: {(p.current_stock * p.cost_price).toFixed(2)}€</span>
+                          <>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Costo Unitario: {p.cost_price.toFixed(2)}€</p>
+                            <p className="text-[10px] font-medium text-muted-foreground uppercase">Valore Totale: {(p.current_stock * p.cost_price).toFixed(2)}€</p>
+                          </>
                         ) : (
-                          <span className="opacity-40 italic">Cod: {p.id.slice(0, 4)}</span>
+                          <span className="text-[10px] opacity-40 italic uppercase">Cod: {p.id.slice(0, 4)}</span>
                         )}
                       </div>
                     </div>
