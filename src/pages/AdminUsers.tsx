@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
-import { ShieldCheck, UserCog, Building2, Search, Mail, Trash2 } from "lucide-react";
+import { ShieldCheck, UserCog, Building2, Search, Mail } from "lucide-react";
 import { Input } from "../components/ui/Input";
 
 interface Profile {

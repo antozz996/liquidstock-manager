@@ -3,11 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from './useAuthStore';
 import { useProductStore } from './useProductStore';
 
-interface RestockItem {
-  product_id: string;
-  quantity: number;
-}
-
 interface ArrivalState {
   activeSession: any | null;
   items: Record<string, number>;
