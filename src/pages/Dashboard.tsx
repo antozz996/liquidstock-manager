@@ -14,7 +14,7 @@ import { useAuthStore } from "../store/useAuthStore";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { products, fetchProducts } = useProductStore();
-  const { role, venueId } = useAuthStore();
+  const { role, venueId, user } = useAuthStore();
   const [lastEvent, setLastEvent] = useState<Event | null>(null);
   const [venueName, setVenueName] = useState<string>("");
 
@@ -47,13 +47,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pt-4 pb-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white leading-none">LiquidStock</h1>
+      <div className="flex items-center justify-between px-1">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground italic">
+            Ciao, {user?.user_metadata?.full_name || 'Operatore'} 👋
+          </p>
+          <h1 className="text-3xl font-black tracking-tighter uppercase italic text-white leading-none">
+            LiquidStock
+          </h1>
           {venueName && (
-            <div className="flex items-center gap-1.5 mt-2 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-md w-fit">
-              <Building2 size={10} className="text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary">{venueName}</span>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sei loggato in:</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-md">
+                <Building2 size={10} className="text-primary" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{venueName}</span>
+              </div>
             </div>
           )}
         </div>
