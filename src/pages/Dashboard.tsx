@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProductStore } from "../store/useProductStore";
-import { Package, AlertTriangle, ArrowRight, History } from "lucide-react";
+import { Package, AlertTriangle, ArrowRight, History, Building2 } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { supabase } from "../lib/supabase";
@@ -14,23 +14,33 @@ import { useAuthStore } from "../store/useAuthStore";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { products, fetchProducts } = useProductStore();
-  const { role } = useAuthStore();
+  const { role, venueId } = useAuthStore();
   const [lastEvent, setLastEvent] = useState<Event | null>(null);
+  const [venueName, setVenueName] = useState<string>("");
 
   useEffect(() => {
     fetchProducts();
     
+    async function fetchVenue() {
+      if (!venueId) return;
+      const { data } = await supabase.from('venues').select('name').eq('id', venueId).single();
+      if (data) setVenueName(data.name);
+    }
+    
     async function fetchLast() {
+      if (!venueId) return;
       const { data } = await supabase
         .from('events')
         .select('*')
+        .eq('venue_id', venueId)
         .eq('status', 'closed')
         .order('closed_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) setLastEvent(data[0] as Event);
     }
+    fetchVenue();
     fetchLast();
-  }, [fetchProducts]);
+  }, [fetchProducts, venueId]);
 
   const activeProducts = products.filter(p => p.is_active);
   const lowStockProducts = activeProducts.filter(p => p.current_stock <= p.min_threshold && p.min_threshold > 0);
@@ -38,7 +48,15 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 pt-4 pb-10">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">LiquidStock</h1>
+        <div>
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white leading-none">LiquidStock</h1>
+          {venueName && (
+            <div className="flex items-center gap-1.5 mt-2 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-md w-fit">
+              <Building2 size={10} className="text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary">{venueName}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 grid-cols-2">
