@@ -15,18 +15,20 @@ export function VenueSwitcher() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
+  const isSuperAdmin = actualRole === 'super_admin' || role === 'super_admin';
+
   useEffect(() => {
-    if (actualRole === 'super_admin') {
+    if (isSuperAdmin) {
       fetchVenues();
     }
-  }, [actualRole]);
+  }, [isSuperAdmin]);
 
   const fetchVenues = async () => {
     const { data } = await supabase.from('venues').select('id, name');
     if (data) setVenues(data);
   };
 
-  if (actualRole !== 'super_admin') return null;
+  if (!isSuperAdmin) return null;
 
   const currentVenue = venues.find(v => v.id === venueId);
 
