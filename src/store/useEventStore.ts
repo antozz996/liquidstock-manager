@@ -140,6 +140,19 @@ export const useEventStore = create<EventState>((set, get) => ({
       venue_id: venueId
     }]);
 
+    // 5. Registra nell'Activity Log
+    const { user } = useAuthStore.getState();
+    await supabase.from('activity_log').insert([{
+      venue_id: venueId,
+      user_id: user?.id,
+      action_type: 'event_close',
+      action_id: currentEvent.id,
+      details: { 
+        event_name: currentEvent.name,
+        summary: summary 
+      }
+    }]);
+
     set({ currentEvent: null, eventStocks: [] });
     set({ isLoading: false });
   },

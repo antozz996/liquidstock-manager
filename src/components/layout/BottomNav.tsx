@@ -1,4 +1,4 @@
-import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users, Truck } from "lucide-react";
+import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users, Truck, Activity } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -14,6 +14,7 @@ export function BottomNav() {
     { name: "Magazzino", path: "/products", icon: Package },
     ...(role === 'admin' || role === 'super_admin' || role === 'staff' ? [
       { name: "Storia", path: "/history", icon: History },
+      ...(role === 'admin' || role === 'super_admin' ? [{ name: "Log", path: "/log", icon: Activity }] : []),
       { name: "Analisi", path: "/analytics", icon: BarChart3 },
       { name: "Team", path: "/team", icon: Users },
     ] : []),

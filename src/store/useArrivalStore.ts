@@ -108,6 +108,16 @@ export const useArrivalStore = create<ArrivalState>((set, get) => ({
       })
       .eq('id', activeSession.id);
 
+    // 4. Registra nell'Activity Log
+    const { user } = useAuthStore.getState();
+    await supabase.from('activity_log').insert([{
+      venue_id: activeSession.venue_id,
+      user_id: user?.id,
+      action_type: 'restock_close',
+      action_id: activeSession.id,
+      details: { items: itemsToInsert }
+    }]);
+
     set({ activeSession: null, items: {} });
     await useProductStore.getState().fetchProducts();
     set({ isLoading: false });
