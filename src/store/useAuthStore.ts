@@ -8,7 +8,7 @@ interface AuthState {
   venueId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, role: 'admin' | 'staff', explicitVenueId?: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role: 'admin' | 'staff', explicitVenueId?: string, fullName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
   switchVenue: (venueId: string) => void;
@@ -28,7 +28,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // 1. Recupera il ruolo e il locale dalla tabella profiles
       let { data: profile } = await supabase
         .from('profiles')
-        .select('role, venue_id')
+        .select('role, venue_id, full_name')
         .eq('id', user.id)
         .single();
       
@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           const { data: firstVenue } = await supabase.from('venues').select('id').limit(1).single();
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
-            .insert([{ id: user.id, role: 'admin', venue_id: firstVenue?.id }])
+            .insert([{ id: user.id, role: 'admin', venue_id: firstVenue?.id, full_name: 'Admin Iniziale' }])
             .select()
             .single();
           if (!createError) profile = newProfile;
@@ -64,7 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, venue_id')
+        .select('role, venue_id, full_name')
         .eq('id', data.user.id)
         .single();
 
@@ -88,8 +88,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     window.location.reload(); 
   },
 
-  signUp: async (email, password, role, explicitVenueId) => {
-    console.log("Tentativo di registrazione per:", email, role, explicitVenueId);
+  signUp: async (email, password, role, explicitVenueId, fullName) => {
+    console.log("Tentativo di registrazione per:", email, role, explicitVenueId, fullName);
     set({ isLoading: true });
     
     try {
@@ -101,7 +101,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         options: {
           data: {
             role: role,
-            venue_id: targetVenueId
+            venue_id: targetVenueId,
+            full_name: fullName
           }
         }
       });

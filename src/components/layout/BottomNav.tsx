@@ -1,4 +1,4 @@
-import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users } from "lucide-react";
+import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users, Truck } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -9,13 +9,14 @@ export function BottomNav() {
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
+    { name: "Arrivi", path: "/arrivals", icon: Truck },
+    { name: "Serata", path: "/events", icon: CalendarClock },
+    { name: "Magazzino", path: "/products", icon: Package },
     ...(role === 'admin' || role === 'super_admin' || role === 'staff' ? [
+      { name: "Storia", path: "/history", icon: History },
       { name: "Analisi", path: "/analytics", icon: BarChart3 },
       { name: "Team", path: "/team", icon: Users },
-      { name: "Storia", path: "/history", icon: History }
     ] : []),
-    { name: "Magazzino", path: "/products", icon: Package },
-    { name: "Serata", path: "/events", icon: CalendarClock },
   ];
 
   return (

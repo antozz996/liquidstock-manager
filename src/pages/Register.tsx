@@ -12,6 +12,7 @@ export default function Register() {
   const venueId = searchParams.get('v');
   const roleParam = searchParams.get('r') as 'admin' | 'staff' || 'staff';
   
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secretCode, setSecretCode] = useState("");
@@ -48,6 +49,12 @@ export default function Register() {
       return;
     }
 
+    if (!fullName || fullName.length < 3) {
+      setErrorMsg("Inserisci il tuo nome e cognome completi.");
+      setIsValidating(false);
+      return;
+    }
+
     try {
       // 1. Verifica codice segreto specifico per QUESTO locale
       const { data, error: codeError } = await supabase
@@ -77,7 +84,7 @@ export default function Register() {
       }
 
       // 2. Procede con registrazione con il ruolo passato nel link
-      const { error } = await signUp(email, password, roleParam, venueId);
+      const { error } = await signUp(email, password, roleParam, venueId, fullName);
       if (error) {
         setErrorMsg("Errore registrazione: " + (error.message || "Riprova."));
       } else {
@@ -124,6 +131,18 @@ export default function Register() {
             </div>
           ) : (
             <form onSubmit={handleRegister} className="space-y-5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nome e Cognome</label>
+                <Input 
+                  type="text"
+                  placeholder="MARIO ROSSI"
+                  className="h-12 bg-black/40 border-muted/20 text-white uppercase"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value.toUpperCase())}
+                  required
+                />
+              </div>
+
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email {isOwnerInvite ? 'Titolare' : 'Personale'}</label>
                 <Input 

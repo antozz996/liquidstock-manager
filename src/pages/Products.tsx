@@ -136,23 +136,13 @@ export default function ProductsList() {
                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
                         <p className={cn(
                           "text-xl font-bold",
-                          p.current_stock <= p.min_threshold && p.min_threshold > 0 ? 'text-accent-orange' : 'text-accent-green'
+                          (role === 'admin' || role === 'super_admin') && p.min_threshold > 0 && p.current_stock <= p.min_threshold 
+                            ? 'text-accent-orange' 
+                            : 'text-accent-green'
                         )}>
                           {p.current_stock}
                         </p>
                       </div>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-10 w-10 rounded-full bg-muted/10 hov:bg-muted/20"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const qty = prompt(`Quante unità di "${p.name}" stai aggiungendo?`);
-                          if(qty) useProductStore.getState().restockProduct(p.id, parseFloat(qty));
-                        }}
-                      >
-                        <Plus className="w-5 h-5 text-primary" />
-                      </Button>
                     </div>
                   </Card>
                 ))}

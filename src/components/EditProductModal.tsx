@@ -70,18 +70,20 @@ export default function EditProductModal({ product, isOpen, onClose }: EditProdu
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Prezzo Costo (€)</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 mb-1">Prezzo Costo (€)</label>
               <Input 
                 type="number"
                 step="0.01"
+                className="h-12 bg-black/40 border-muted/20"
                 value={formData.cost_price}
                 onChange={e => setFormData({...formData, cost_price: parseFloat(e.target.value)})}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Soglia Riordino</label>
+              <label className="block text-[10px] font-black uppercase tracking-widest text-primary ml-1 mb-1">Soglia Riordino</label>
               <Input 
                 type="number"
+                className="h-12 bg-primary/5 border-primary/20 text-primary font-bold"
                 value={formData.min_threshold}
                 onChange={e => setFormData({...formData, min_threshold: parseInt(e.target.value)})}
               />

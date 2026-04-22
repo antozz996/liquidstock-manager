@@ -50,15 +50,17 @@ export default function Dashboard() {
           <span className="text-3xl font-bold">{activeProducts.length}</span>
         </div>
 
-        <div className="rounded-xl border border-accent-orange/50 bg-accent-orange/10 p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-accent-orange mb-2">
-            <AlertTriangle className="w-5 h-5" />
-            <span className="text-sm font-medium">Sotto Scorta</span>
+        {(role === 'admin' || role === 'super_admin') && (
+          <div className="rounded-xl border border-accent-orange/50 bg-accent-orange/10 p-4 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center gap-2 text-accent-orange mb-2">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="text-sm font-medium">Sotto Scorta</span>
+            </div>
+            <span className="text-3xl font-bold text-accent-orange">
+              {lowStockProducts.length}
+            </span>
           </div>
-          <span className="text-3xl font-bold text-accent-orange">
-            {lowStockProducts.length}
-          </span>
-        </div>
+        )}
 
         {(role === 'admin' || role === 'super_admin') && (
           <div className="rounded-xl border border-muted bg-card p-4 shadow-sm flex flex-col justify-between col-span-2">

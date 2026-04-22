@@ -87,24 +87,16 @@ export const generateReorderPDF = (reorderItems: any[]) => {
 
   const tableData = reorderItems.map(item => [
     item.name,
-    item.category,
-    formatNumber(item.current_stock),
-    formatNumber(item.min_threshold),
     formatNumber(item.qty_to_order),
-    formatCurrency(item.cost_price),
-    formatCurrency(item.order_cost),
   ]);
-
-  const totalCost = reorderItems.reduce((acc, item) => acc + item.order_cost, 0);
 
   autoTable(doc, {
     startY: 40,
-    head: [['Prodotto', 'Cat.', 'Stock', 'Soglia', 'Ordine', 'Costo Un.', 'Totale']],
+    head: [['Prodotto', 'Ordine']],
     body: tableData,
-    foot: [['', '', '', '', '', 'TOTALE STIMATO', formatCurrency(totalCost)]],
-    theme: 'striped',
+    theme: 'grid',
     headStyles: { fillColor: [245, 158, 11] }, // orange accent
-    footStyles: { fillColor: [245, 158, 11] },
+    styles: { fontSize: 12, cellPadding: 5 },
   });
 
   doc.save(`Ordine_Acquisto_${formatDate(new Date()).replace(/\//g, '-')}.pdf`);

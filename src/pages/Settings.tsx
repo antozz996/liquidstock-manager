@@ -72,14 +72,23 @@ export default function Settings() {
   };
 
   const handleDeleteProfile = async (id: string, pRole: string) => {
-    if (pRole === 'admin') {
-      alert("Non puoi eliminare un amministratore.");
+    const isMe = id === useAuthStore.getState().user?.id;
+    
+    if (isMe) {
+      alert("Non puoi eliminare il tuo stesso account da qui.");
       return;
     }
-    if (!confirm("Sei sicuro di voler eliminare questo profilo? L'utente non potrà più accedere.")) return;
+
+    if (role === 'admin' && pRole === 'admin') {
+      alert("Un amministratore non può eliminarne un altro. Solo il Super Admin può farlo.");
+      return;
+    }
+
+    if (!confirm("Sei sicuro di voler eliminare questo profilo? L'utente perderà l'accesso a questo locale immediatamente.")) return;
     
     const { error } = await supabase.from('profiles').delete().eq('id', id);
     if (!error) fetchData();
+    else alert("Errore durante l'eliminazione.");
   };
 
   if (role !== 'admin' && role !== 'super_admin') {
@@ -168,12 +177,17 @@ export default function Settings() {
                   {p.role === 'admin' ? <ShieldCheck size={20} /> : <Users size={20} />}
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm uppercase leading-tight">Utente {p.id.slice(0, 5)}</p>
+                  <p className="font-bold text-white text-sm uppercase leading-tight">{p.full_name || `Utente ${p.id.slice(0, 5)}`}</p>
                   <p className="text-[9px] text-muted-foreground font-black uppercase tracking-widest leading-none mt-1">{p.role} &bull; {formatDateTime(p.updated_at)}</p>
                 </div>
               </div>
               
-              {p.role !== 'admin' && p.role !== 'super_admin' && (
+              {/* Mostra il cestino se: 
+                  1. Sono Super Admin e non sto eliminando me stesso
+                  2. Sono Admin e sto eliminando uno Staff
+              */}
+              {((role === 'super_admin' && p.id !== useAuthStore.getState().user?.id) || 
+                (role === 'admin' && p.role === 'staff')) && (
                 <Button 
                   variant="ghost" 
                   size="icon" 
