@@ -25,6 +25,8 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
+  const [venueAccess, setVenueAccess] = useState<Record<string, string[]>>({});
+
   const fetchData = async () => {
     setIsLoading(true);
     
@@ -43,6 +45,17 @@ export default function AdminUsers() {
       .order('name', { ascending: true });
     
     if (vData) setVenues(vData);
+
+    // 3. Fetch all access mapping
+    const { data: aData } = await supabase.from('venue_access').select('user_id, venue_id');
+    if (aData) {
+      const mapping: Record<string, string[]> = {};
+      aData.forEach(item => {
+        if (!mapping[item.user_id]) mapping[item.user_id] = [];
+        mapping[item.user_id].push(item.venue_id);
+      });
+      setVenueAccess(mapping);
+    }
     
     setIsLoading(false);
   };
@@ -50,6 +63,37 @@ export default function AdminUsers() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleToggleAccess = async (userId: string, venueId: string) => {
+    const current = venueAccess[userId] || [];
+    const hasAccess = current.includes(venueId);
+
+    if (hasAccess) {
+      const { error } = await supabase
+        .from('venue_access')
+        .delete()
+        .eq('user_id', userId)
+        .eq('venue_id', venueId);
+      
+      if (!error) {
+        setVenueAccess({
+          ...venueAccess,
+          [userId]: current.filter(id => id !== venueId)
+        });
+      }
+    } else {
+      const { error } = await supabase
+        .from('venue_access')
+        .insert([{ user_id: userId, venue_id: venueId }]);
+      
+      if (!error) {
+        setVenueAccess({
+          ...venueAccess,
+          [userId]: [...current, venueId]
+        });
+      }
+    }
+  };
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
     const { error } = await supabase
@@ -155,7 +199,32 @@ export default function AdminUsers() {
 
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground pt-2">
                 <Building2 size={12} />
-                <span className="font-bold uppercase tracking-widest">Attualmente in: <span className="text-white">{p.venues?.name || "Nessuna Struttura"}</span></span>
+                <span className="font-bold uppercase tracking-widest">Locale Principale: <span className="text-white">{p.venues?.name || "Nessuna Struttura"}</span></span>
+              </div>
+
+              <div className="pt-3 border-t border-white/5 space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Accessi Extra (Multi-Locale)</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {venues.map(v => {
+                    const isMain = p.venue_id === v.id;
+                    const isExtra = (venueAccess[p.id] || []).includes(v.id);
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => !isMain && handleToggleAccess(p.id, v.id)}
+                        className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border transition-all ${
+                          isMain 
+                            ? "bg-white/10 border-white/20 text-white cursor-default opacity-50" 
+                            : isExtra 
+                              ? "bg-primary/20 border-primary/40 text-primary shadow-lg shadow-primary/10" 
+                              : "bg-black/20 border-white/5 text-muted-foreground hover:border-white/20"
+                        }`}
+                      >
+                        {v.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </Card>
           ))
