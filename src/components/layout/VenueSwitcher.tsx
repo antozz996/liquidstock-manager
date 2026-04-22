@@ -11,22 +11,22 @@ interface Venue {
 }
 
 export function VenueSwitcher() {
-  const { role, venueId, switchVenue, setRole } = useAuthStore();
+  const { role, actualRole, venueId, switchVenue, setRole } = useAuthStore();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (role === 'super_admin') {
+    if (actualRole === 'super_admin') {
       fetchVenues();
     }
-  }, [role]);
+  }, [actualRole]);
 
   const fetchVenues = async () => {
     const { data } = await supabase.from('venues').select('id, name');
     if (data) setVenues(data);
   };
 
-  if (role !== 'super_admin') return null;
+  if (actualRole !== 'super_admin') return null;
 
   const currentVenue = venues.find(v => v.id === venueId);
 
@@ -41,7 +41,9 @@ export function VenueSwitcher() {
             <Building2 size={20} />
           </div>
           <div>
-            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none">Struttura Attiva</span>
+            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none">
+              Struttura Attiva {role !== actualRole && <span className="text-primary">(VISTA {role})</span>}
+            </span>
             <h3 className="text-lg font-bold leading-none mt-1">{currentVenue?.name || 'Caricamento...'}</h3>
           </div>
         </div>
@@ -73,7 +75,7 @@ export function VenueSwitcher() {
                 onClick={() => setRole('staff')}
                 className={cn(
                   "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                  role === 'staff' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                  (role as string) === 'staff' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
                 )}
               >
                 Staff
@@ -82,7 +84,7 @@ export function VenueSwitcher() {
                 onClick={() => setRole('admin')}
                 className={cn(
                   "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                  role === 'admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
+                  (role as string) === 'admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
                 )}
               >
                 Admin
@@ -91,7 +93,7 @@ export function VenueSwitcher() {
                 onClick={() => setRole('super_admin')}
                 className={cn(
                   "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                  role === 'super_admin' ? "bg-accent-orange text-white border-accent-orange shadow-[0_0_10px_rgba(255,107,0,0.4)]" : "bg-white/5 border-white/10 text-muted-foreground"
+                  (role as string) === 'super_admin' ? "bg-accent-orange text-white border-accent-orange shadow-[0_0_10px_rgba(255,107,0,0.4)]" : "bg-white/5 border-white/10 text-muted-foreground"
                 )}
               >
                 Super Admin
