@@ -12,9 +12,9 @@ export function BottomNav() {
     { name: "Arrivi", path: "/arrivals", icon: Truck },
     { name: "Serata", path: "/events", icon: CalendarClock },
     { name: "Magazzino", path: "/products", icon: Package },
-    ...(role === 'admin' || role === 'super_admin' || role === 'staff' ? [
+    ...(role === 'admin' || role === 'super_admin' ? [
       { name: "Storia", path: "/history", icon: History },
-      ...(role === 'admin' || role === 'super_admin' ? [{ name: "Log", path: "/log", icon: Activity }] : []),
+      { name: "Log", path: "/log", icon: Activity },
       { name: "Analisi", path: "/analytics", icon: BarChart3 },
       { name: "Team", path: "/team", icon: Users },
     ] : []),
