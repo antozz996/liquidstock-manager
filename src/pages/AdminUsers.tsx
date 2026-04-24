@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
-import { ShieldCheck, UserCog, Building2, Search, Mail } from "lucide-react";
+import { ShieldCheck, UserCog, Building2, Search, Mail, Trash2, CheckCircle2 } from "lucide-react";
 import { Input } from "../components/ui/Input";
 
 interface Profile {
@@ -26,6 +26,7 @@ export default function AdminUsers() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [venueAccess, setVenueAccess] = useState<Record<string, string[]>>({});
+  const [saveStatus, setSaveStatus] = useState<Record<string, 'saving' | 'saved' | null>>({});
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -68,6 +69,8 @@ export default function AdminUsers() {
     const current = venueAccess[userId] || [];
     const hasAccess = current.includes(venueId);
 
+    setSaveStatus({ ...saveStatus, [userId]: 'saving' });
+
     if (hasAccess) {
       const { error } = await supabase
         .from('venue_access')
@@ -80,6 +83,8 @@ export default function AdminUsers() {
           ...venueAccess,
           [userId]: current.filter(id => id !== venueId)
         });
+        setSaveStatus({ ...saveStatus, [userId]: 'saved' });
+        setTimeout(() => setSaveStatus(prev => ({ ...prev, [userId]: null })), 2000);
       }
     } else {
       const { error } = await supabase
@@ -91,11 +96,14 @@ export default function AdminUsers() {
           ...venueAccess,
           [userId]: [...current, venueId]
         });
+        setSaveStatus({ ...saveStatus, [userId]: 'saved' });
+        setTimeout(() => setSaveStatus(prev => ({ ...prev, [userId]: null })), 2000);
       }
     }
   };
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
+    setSaveStatus({ ...saveStatus, [userId]: 'saving' });
     const { error } = await supabase
       .from('profiles')
       .update({ role: newRole })
@@ -103,10 +111,13 @@ export default function AdminUsers() {
     
     if (!error) {
       setProfiles(profiles.map(p => p.id === userId ? { ...p, role: newRole } : p));
+      setSaveStatus({ ...saveStatus, [userId]: 'saved' });
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, [userId]: null })), 2000);
     }
   };
 
   const handleUpdateVenue = async (userId: string, newVenueId: string) => {
+    setSaveStatus({ ...saveStatus, [userId]: 'saving' });
     const { error } = await supabase
       .from('profiles')
       .update({ venue_id: newVenueId })
@@ -115,6 +126,23 @@ export default function AdminUsers() {
     if (!error) {
       const venueName = venues.find(v => v.id === newVenueId)?.name || "Nessuno";
       setProfiles(profiles.map(p => p.id === userId ? { ...p, venue_id: newVenueId, venues: { name: venueName } } : p));
+      setSaveStatus({ ...saveStatus, [userId]: 'saved' });
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, [userId]: null })), 2000);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, name: string | null) => {
+    if (!confirm(`Sei sicuro di voler eliminare definitivamente ${name || 'questo utente'}? Questa operazione lo rimuoverà anche da Supabase Auth.`)) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (!error) {
+      setProfiles(profiles.filter(p => p.id !== userId));
+    } else {
+      alert("Errore durante l'eliminazione dell'utente.");
     }
   };
 
@@ -164,8 +192,24 @@ export default function AdminUsers() {
                     </p>
                   </div>
                 </div>
-                <div className="px-2 py-1 rounded bg-accent-orange/10 text-accent-orange text-[9px] font-black uppercase tracking-widest border border-accent-orange/20">
-                  {p.role}
+                <div className="flex flex-col items-end gap-2">
+                  <div className="px-2 py-1 rounded bg-accent-orange/10 text-accent-orange text-[9px] font-black uppercase tracking-widest border border-accent-orange/20">
+                    {p.role}
+                  </div>
+                  {saveStatus[p.id] === 'saved' && (
+                    <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase animate-in fade-in zoom-in duration-300">
+                      <CheckCircle2 size={10} /> Salvato
+                    </div>
+                  )}
+                  {p.id !== useAuthStore.getState().user?.id && (
+                    <button 
+                      onClick={() => handleDeleteUser(p.id, p.full_name)}
+                      className="p-2 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                      title="Elimina Utente"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
 
