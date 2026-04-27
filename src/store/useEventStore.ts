@@ -11,6 +11,8 @@ interface EventState {
   fetchCurrentEvent: () => Promise<void>;
   openNewEvent: (name: string, date: string, products: Product[]) => Promise<void>;
   updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
+  addFinalCount: (eventStockId: string, qty: number, operatorName?: string) => Promise<void>;
+  clearFinalCounts: (eventStockId: string) => Promise<void>;
   closeEvent: () => Promise<void>;
   softEditReport: (eventId: string, reportId: string, productId: string, newFinalQty: number, note: string) => Promise<void>;
 }
@@ -109,6 +111,48 @@ export const useEventStore = create<EventState>((set, get) => ({
     } catch (err) {
       console.error("Errore salvataggio giacenza finale:", err);
     }
+  },
+
+  addFinalCount: async (eventStockId, qty, operatorName) => {
+    // 1. Inserimento del conteggio parziale
+    const { error } = await supabase
+      .from('event_final_counts')
+      .insert([{
+        event_stock_id: eventStockId,
+        qty: qty,
+        operator_name: operatorName || 'Operatore'
+      }]);
+    
+    if (error) {
+      console.error("Errore salvataggio conteggio parziale:", error);
+      return;
+    }
+
+    // 2. Il trigger sul DB aggiornerà automaticamente final_qty in event_stocks.
+    // Per UX, aggiorniamo ottimisticamente sommando alla giacenza attuale
+    set(state => ({
+      eventStocks: state.eventStocks.map(es => 
+        es.id === eventStockId 
+          ? { ...es, final_qty: (es.final_qty || 0) + qty } 
+          : es
+      )
+    }));
+  },
+
+  clearFinalCounts: async (eventStockId) => {
+    // 1. Rimuove tutti i conteggi parziali per questo stock
+    await supabase
+      .from('event_final_counts')
+      .delete()
+      .eq('event_stock_id', eventStockId);
+    
+    // 2. Il trigger aggiornerà il totale a 0.
+    // Aggiorniamo ottimisticamente lo stato locale
+    set(state => ({
+      eventStocks: state.eventStocks.map(es => 
+        es.id === eventStockId ? { ...es, final_qty: 0 } : es
+      )
+    }));
   },
 
   closeEvent: async () => {

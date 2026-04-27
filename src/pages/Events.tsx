@@ -5,18 +5,24 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus, RotateCcw, User } from "lucide-react";
 import { groupBy, CATEGORY_ORDER } from "../lib/utils";
 
 import { useAuthStore } from "../store/useAuthStore";
 
 export default function EventsSpace() {
-  const { currentEvent, eventStocks, isLoading, fetchCurrentEvent, openNewEvent, updateFinalStock, closeEvent } = useEventStore();
+  const { 
+    currentEvent, eventStocks, isLoading, fetchCurrentEvent, 
+    openNewEvent, updateFinalStock, addFinalCount, clearFinalCounts, closeEvent 
+  } = useEventStore();
   const { products, fetchProducts } = useProductStore();
-  const { role } = useAuthStore();
+  const { user, role } = useAuthStore();
 
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // State per gestire i nuovi conteggi inseriti
+  const [newCounts, setNewCounts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchCurrentEvent();
@@ -142,18 +148,58 @@ export default function EventsSpace() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Input 
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="Q.tà"
-                          className={`w-20 text-center text-xl font-bold h-12 ${isAnomaly ? 'border-accent-red text-accent-red' : ''}`}
-                          value={stock.final_qty === null ? "" : stock.final_qty}
-                          onChange={(e) => {
-                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
-                            updateFinalStock(stock.id, val as any);
-                          }}
-                        />
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1">Giacenza Totale</p>
+                          <div className={cn(
+                            "text-2xl font-black leading-none",
+                            stock.final_qty !== null ? "text-white" : "text-white/20"
+                          )}>
+                            {stock.final_qty !== null ? stock.final_qty : "--"}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <Input 
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="+ Aggiungi"
+                            className="w-24 h-9 text-xs text-center font-bold bg-white/5 border-white/10"
+                            value={newCounts[stock.id] || ""}
+                            onChange={(e) => setNewCounts({ ...newCounts, [stock.id]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newCounts[stock.id]) {
+                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.full_name || 'Staff');
+                                setNewCounts({ ...newCounts, [stock.id]: "" });
+                              }
+                            }}
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="secondary"
+                            className="h-9 w-9 p-0 border-white/5"
+                            onClick={() => {
+                              if (newCounts[stock.id]) {
+                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.full_name || 'Staff');
+                                setNewCounts({ ...newCounts, [stock.id]: "" });
+                              }
+                            }}
+                          >
+                            <Plus size={16} />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-9 w-9 p-0 text-muted-foreground hover:text-accent-red"
+                            onClick={() => {
+                              if (confirm(`Vuoi azzerare i conteggi per ${product.name}?`)) {
+                                clearFinalCounts(stock.id);
+                              }
+                            }}
+                          >
+                            <RotateCcw size={14} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     {isAnomaly && (
