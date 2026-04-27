@@ -146,11 +146,10 @@ export const useEventStore = create<EventState>((set, get) => ({
       .delete()
       .eq('event_stock_id', eventStockId);
     
-    // 2. Il trigger aggiornerà il totale a 0.
-    // Aggiorniamo ottimisticamente lo stato locale
+    // 2. Quando tutti i conteggi sono rimossi, final_qty torna a null (non compilato)
     set(state => ({
       eventStocks: state.eventStocks.map(es => 
-        es.id === eventStockId ? { ...es, final_qty: 0 } : es
+        es.id === eventStockId ? { ...es, final_qty: null } : es
       )
     }));
   },

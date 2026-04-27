@@ -70,12 +70,15 @@ export default function EventsSpace() {
 
   // EVENTO APERTO - CHIUSURA
   const handleClose = async () => {
-    // Validazione basica (tutti final inseriti?)
-    const allFilled = eventStocks.every(es => es.final_qty !== null && es.final_qty !== undefined);
-    if (!allFilled) {
-      alert("Devi compilare le quantità finali per tutti i prodotti attivi prima di chiudere la serata.");
-      return;
+    const unfilledCount = eventStocks.filter(es => es.final_qty === null || es.final_qty === undefined).length;
+    
+    if (unfilledCount > 0) {
+      const proceed = confirm(
+        `Attenzione: ${unfilledCount} prodott${unfilledCount === 1 ? 'o non ha' : 'i non hanno'} ancora nessun conteggio inserito.\n\nI prodotti senza conteggio verranno SALTATI (non aggiornati nel magazzino).\n\nVuoi procedere comunque con la chiusura?`
+      );
+      if (!proceed) return;
     }
+    
     await closeEvent();
     alert("Serata chiusa con successo! Giacenze aggiornate.");
   };
