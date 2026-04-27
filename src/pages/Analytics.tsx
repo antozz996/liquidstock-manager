@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend 
+  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area
 } from "recharts";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
-import { TrendingUp, AlertCircle } from "lucide-react";
+import { TrendingUp, AlertCircle, Calendar, Euro, Package, ArrowUpRight, ArrowDownRight, Activity } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { cn } from "../lib/utils";
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -82,96 +83,180 @@ export default function Analytics() {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
 
-  // 4. Dati per Volume Consumato (Area Chart)
-  const volumeData = reports.map(r => {
-    const totalVolume = r.details_json?.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0) || 0;
-    return {
-      name: r.event?.name.slice(0, 10),
-      volume: totalVolume
-    };
-  }).slice(-15); // Ultime 15 serate
+  // 5. KPI Calcoli
+  const totalEvents = reports.length;
+  const totalCosts = reports.reduce((acc, r) => acc + (r.total_cost_consumed || 0), 0);
+  const avgCostPerEvent = totalCosts / totalEvents;
+  const totalVolume = reports.reduce((acc, r) => {
+    return acc + (r.details_json?.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0) || 0);
+  }, 0);
+
+  // 6. Top Prodotti per COSTO (non solo Q.tà)
+  const productCosts: Record<string, number> = {};
+  reports.forEach(r => {
+    r.details_json?.forEach((row: any) => {
+      const name = row.product?.name || row.name;
+      if (!name) return;
+      if (!productCosts[name]) productCosts[name] = 0;
+      productCosts[name] += row.cost_value || 0;
+    });
+  });
+
+  const topCostlyProducts = Object.entries(productCosts)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  // 7. Trend Delta (confronto ultima serata con media)
+  const lastEventCost = reports[reports.length - 1]?.total_cost_consumed || 0;
+  const costTrend = lastEventCost > avgCostPerEvent ? 'up' : 'down';
+  const costDiff = Math.abs(((lastEventCost - avgCostPerEvent) / avgCostPerEvent) * 100).toFixed(1);
 
   return (
     <div className="space-y-6 pt-4 pb-24">
-      <div className="flex items-center gap-2">
-        <TrendingUp className="text-primary w-5 h-5" />
-        <h1 className="text-2xl font-bold tracking-tight">Analisi Consumi</h1>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <Activity className="text-primary w-5 h-5" />
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white leading-none">Analisi Business</h1>
+        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-50">Statistiche e Performance Operative</p>
+      </div>
+
+      {/* KPI Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
+          <div className="flex justify-between items-center">
+            <Calendar size={14} className="text-primary" />
+            <span className="text-[8px] font-black uppercase text-muted-foreground">Totali</span>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-white">{totalEvents}</p>
+            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Serate Archiviate</p>
+          </div>
+        </Card>
+        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
+          <div className="flex justify-between items-center">
+            <Euro size={14} className="text-accent-green" />
+            <span className={cn(
+              "flex items-center text-[8px] font-black uppercase",
+              costTrend === 'up' ? "text-accent-red" : "text-accent-green"
+            )}>
+              {costTrend === 'up' ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+              {costDiff}%
+            </span>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-white">{formatCurrency(totalCosts)}</p>
+            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Costo Totale</p>
+          </div>
+        </Card>
+        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
+          <div className="flex justify-between items-center">
+            <TrendingUp size={14} className="text-accent-orange" />
+            <span className="text-[8px] font-black uppercase text-muted-foreground">Media</span>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-white">{formatCurrency(avgCostPerEvent)}</p>
+            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Costo x Serata</p>
+          </div>
+        </Card>
+        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
+          <div className="flex justify-between items-center">
+            <Package size={14} className="text-blue-500" />
+            <span className="text-[8px] font-black uppercase text-muted-foreground">Volume</span>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-white">{totalVolume.toLocaleString()}</p>
+            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Unità Consumate</p>
+          </div>
+        </Card>
       </div>
 
       <div className="grid gap-6">
-        {/* Trend Volume Consumato - Area Chart */}
-        <Card className="p-5 border-muted/20 bg-card/40 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <TrendingUp size={80} />
+        {/* Trend Area Chart - Unione Volume e Costo */}
+        <Card className="p-5 border-white/5 bg-white/5 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary">Performance Storica</h3>
+            <div className="flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-accent-green"></div>
+                <span className="text-[8px] font-bold uppercase text-muted-foreground">Costi (€)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-accent-orange"></div>
+                <span className="text-[8px] font-bold uppercase text-muted-foreground">Volume</span>
+              </div>
+            </div>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Volume Totale Consumato (Unità)</h3>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#888' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#888' }} />
+              <AreaChart data={reports.map(r => ({
+                name: r.event?.name.slice(0, 10),
+                costo: r.total_cost_consumed,
+                volume: r.details_json?.reduce((sum: number, item: any) => sum + (item.consumed || 0), 0) || 0
+              })).slice(-10)}>
+                <defs>
+                  <linearGradient id="colorCosto" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#666' }} axisLine={false} tickLine={false} />
+                <YAxis hide />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
-                  formatter={(val: number) => [val, "Unità"]}
+                  contentStyle={{ backgroundColor: '#000', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                  itemStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}
                 />
-                <Bar dataKey="volume" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Trend Costi Serata - Line Chart */}
-        <Card className="p-5 border-muted/20 bg-card/40">
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Andamento Costi Ultime Serate</h3>
-          <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#888' }} />
-                <YAxis tick={{ fontSize: 10, fill: '#888' }} tickFormatter={(val) => `€${val}`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
-                  formatter={(val: number) => [formatCurrency(val), "Costo"]}
-                />
-                <Line type="monotone" dataKey="costo" stroke="#10B981" strokeWidth={3} dot={{ r: 4, fill: '#10B981', strokeWidth: 0 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="costo" stroke="#10B981" fillOpacity={1} fill="url(#colorCosto)" strokeWidth={2} />
+                <Area type="monotone" dataKey="volume" stroke="#F59E0B" fillOpacity={1} fill="url(#colorVolume)" strokeWidth={2} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
         {/* Grid per Category e Top Products */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Top Prodotti */}
-          <Card className="p-5 border-muted/20 bg-card/40">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Top 5 Prodotti</h3>
-            <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts} layout="vertical" margin={{ left: 10, right: 30 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 8, fill: '#888' }} />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
-                  />
-                  <Bar dataKey="qty" fill="#3B82F6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Top Prodotti per COSTO */}
+          <Card className="p-5 border-white/5 bg-white/5">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-6">Prodotti ad alto impatto (€)</h3>
+            <div className="space-y-4">
+              {topCostlyProducts.map((p, idx) => (
+                <div key={p.name} className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-muted-foreground w-4">{idx + 1}.</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[10px] font-bold text-white uppercase">{p.name}</span>
+                      <span className="text-[10px] font-black text-accent-green">{formatCurrency(p.value)}</span>
+                    </div>
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent-green rounded-full opacity-80"
+                        style={{ width: `${(p.value / topCostlyProducts[0].value) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
 
           {/* Distribuzione spesa per categoria */}
-          <Card className="p-5 border-muted/20 bg-card/40">
-            <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-6">Distribuzione Spesa</h3>
-            <div className="h-[250px] w-full">
+          <Card className="p-5 border-white/5 bg-white/5 flex flex-col items-center">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary self-start mb-6">Spesa per Categoria</h3>
+            <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={categoryData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
+                    innerRadius={60}
+                    outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -180,16 +265,57 @@ export default function Analytics() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#000', border: '1px solid #ffffff10', borderRadius: '12px' }}
                     formatter={(val: number) => formatCurrency(val)}
                   />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '8px', paddingTop: '10px' }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 w-full">
+              {categoryData.slice(0, 6).map((cat, idx) => (
+                <div key={cat.name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase truncate">{cat.name}</span>
+                  <span className="text-[9px] font-black text-white ml-auto">{formatCurrency(cat.value)}</span>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
+
+        {/* Detailed Breakdown Table */}
+        <Card className="border-white/5 bg-white/5 overflow-hidden">
+          <div className="p-5 border-b border-white/5">
+            <h3 className="text-xs font-black uppercase tracking-widest text-primary">Classifica Consumi (Volume)</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[8px] font-black uppercase text-muted-foreground tracking-widest border-b border-white/5 bg-white/[0.02]">
+                  <th className="px-5 py-3">Prodotto</th>
+                  <th className="px-5 py-3 text-right">Totale Unità</th>
+                  <th className="px-5 py-3 text-right">Costo Generato</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {Object.entries(productConsumption)
+                  .map(([name, qty]) => ({ name, qty, cost: productCosts[name] || 0 }))
+                  .sort((a, b) => b.qty - a.qty)
+                  .slice(0, 10)
+                  .map((p) => (
+                    <tr key={p.name} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-4 text-[10px] font-bold text-white uppercase">{p.name}</td>
+                      <td className="px-5 py-4 text-right text-[10px] font-black text-accent-orange">{p.qty}</td>
+                      <td className="px-5 py-4 text-right text-[10px] font-black text-accent-green">{formatCurrency(p.cost)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     </div>
+  );
+}
   );
 }
