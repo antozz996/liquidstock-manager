@@ -4,8 +4,8 @@ import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
   user: User | null;
-  role: 'admin' | 'staff' | 'super_admin' | null;
-  actualRole: 'admin' | 'staff' | 'super_admin' | null;
+  role: 'admin' | 'staff' | 'super_admin' | 'osservatore' | null;
+  actualRole: 'admin' | 'staff' | 'super_admin' | 'osservatore' | null;
   venueId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -13,7 +13,7 @@ interface AuthState {
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
   switchVenue: (venueId: string) => void;
-  setRole: (role: 'admin' | 'staff' | 'super_admin') => void;
+  setRole: (role: 'admin' | 'staff' | 'super_admin' | 'osservatore') => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({

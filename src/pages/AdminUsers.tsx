@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { ShieldCheck, UserCog, Building2, Search, Mail, Trash2, CheckCircle2 } from "lucide-react";
 import { Input } from "../components/ui/Input";
+import { cn } from "../lib/utils";
 
 interface Profile {
   id: string;
