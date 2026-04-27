@@ -52,6 +52,16 @@ export const useArrivalStore = create<ArrivalState>((set, get) => ({
 
     if (!error && data) {
       set({ activeSession: data, items: {} });
+
+      // Registra l'inizio carico nel Log
+      const { user } = useAuthStore.getState();
+      await supabase.from('activity_log').insert([{
+        venue_id: venueId,
+        user_id: user?.id,
+        action_type: 'restock_open',
+        action_id: data.id,
+        details: { session_id: data.id.slice(0, 5) }
+      }]);
     }
     set({ isLoading: false });
   },

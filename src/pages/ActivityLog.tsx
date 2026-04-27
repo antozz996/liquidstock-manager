@@ -9,7 +9,7 @@ import { formatDateTime } from "../lib/formatters";
 
 interface LogEntry {
   id: string;
-  action_type: 'event_close' | 'restock_close';
+  action_type: 'event_close' | 'restock_close' | 'event_open' | 'restock_open';
   action_id: string;
   created_at: string;
   is_undone: boolean;
@@ -114,13 +114,15 @@ export default function ActivityLog() {
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center border",
-                    log.action_type === 'event_close' ? "bg-accent-red/10 text-accent-red border-accent-red/20" : "bg-accent-green/10 text-accent-green border-accent-green/20"
+                    log.action_type === 'event_close' || log.action_type === 'event_open' ? "bg-accent-red/10 text-accent-red border-accent-red/20" : "bg-accent-green/10 text-accent-green border-accent-green/20"
                   )}>
-                    {log.action_type === 'event_close' ? <PackageMinus size={20} /> : <PackagePlus size={20} />}
+                    {log.action_type === 'event_close' || log.action_type === 'event_open' ? <PackageMinus size={20} /> : <PackagePlus size={20} />}
                   </div>
                   <div>
                     <h4 className="font-bold text-white uppercase tracking-tight text-sm">
-                      {log.action_type === 'event_close' ? 'Chiusura Serata' : 'Carico Merce'}
+                      {log.action_type === 'event_close' ? 'Chiusura Serata' : 
+                       log.action_type === 'event_open' ? 'Inizio Serata' :
+                       log.action_type === 'restock_open' ? 'Inizio Carico' : 'Carico Merce'}
                     </h4>
                     <p className="text-[10px] text-muted-foreground font-medium uppercase flex items-center gap-1">
                       <Clock size={10} /> {formatDateTime(log.created_at)}
@@ -128,7 +130,7 @@ export default function ActivityLog() {
                   </div>
                 </div>
                 
-                {!log.is_undone && (
+                {!log.is_undone && (log.action_type === 'event_close' || log.action_type === 'restock_close') && (
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -146,7 +148,7 @@ export default function ActivityLog() {
                   Operatore: <span className="text-white">{log.profiles?.full_name || "N/A"}</span>
                 </div>
                 <div className="text-muted-foreground uppercase font-black tracking-widest">
-                  {log.action_type === 'event_close' ? (
+                  {log.action_type.includes('event') ? (
                     <span>Evento: <span className="text-white">{log.details.event_name}</span></span>
                   ) : (
                     <span>ID Carico: <span className="text-white">#{log.action_id.slice(0, 5)}</span></span>

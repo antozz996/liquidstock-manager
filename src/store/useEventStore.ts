@@ -78,6 +78,16 @@ export const useEventStore = create<EventState>((set, get) => ({
         .select('*, product:products(*)');
         
       set({ currentEvent: newEvent as Event, eventStocks: (insertedStocks || []) as unknown as EventStock[] });
+
+      // 3. Registra l'apertura nel Log
+      const { user } = useAuthStore.getState();
+      await supabase.from('activity_log').insert([{
+        venue_id: venueId,
+        user_id: user?.id,
+        action_type: 'event_open',
+        action_id: newEvent.id,
+        details: { event_name: newEvent.name }
+      }]);
     }
     set({ isLoading: false });
   },
