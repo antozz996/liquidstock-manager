@@ -6,6 +6,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { History, Undo2, User, Clock, PackageMinus, PackagePlus, CalendarX } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
+import { cn } from "../lib/utils";
 
 interface LogEntry {
   id: string;
@@ -166,6 +167,3 @@ export default function ActivityLog() {
   );
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
-}

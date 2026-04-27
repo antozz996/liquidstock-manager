@@ -118,11 +118,11 @@ export default function Dashboard() {
 
       <div className="space-y-4 pt-4">
         <h2 className="text-lg font-semibold border-b border-muted/30 pb-2">Azioni Rapide</h2>
-        <Button className="w-full justify-between h-14" variant="secondary" onClick={() => window.location.href='/events'}>
+        <Button className="w-full justify-between h-14" variant="secondary" onClick={() => navigate('/events')}>
           <span className="text-lg">Vai a Gestione Serata</span>
           <ArrowRight className="w-5 h-5 opacity-50" />
         </Button>
-        <Button className="w-full justify-between h-14" variant="outline" onClick={() => window.location.href='/products'}>
+        <Button className="w-full justify-between h-14" variant="outline" onClick={() => navigate('/products')}>
           <span className="text-lg">Gestisci Magazzino</span>
           <Package className="w-5 h-5 opacity-50" />
         </Button>

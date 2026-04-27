@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Users, Key, RefreshCw, Trash2, ShieldCheck, Sparkles } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
+import { cn } from "../lib/utils";
 
 export default function Settings() {
   const { role, venueId } = useAuthStore();
@@ -212,6 +213,3 @@ export default function Settings() {
 }
 
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
-}

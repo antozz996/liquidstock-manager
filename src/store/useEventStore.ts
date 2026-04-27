@@ -10,7 +10,6 @@ interface EventState {
   isLoading: boolean;
   fetchCurrentEvent: () => Promise<void>;
   openNewEvent: (name: string, date: string, products: Product[]) => Promise<void>;
-  updateFinalStock: (eventStockId: string, finalQty: number) => Promise<void>;
   addFinalCount: (eventStockId: string, qty: number, operatorName?: string) => Promise<void>;
   clearFinalCounts: (eventStockId: string) => Promise<void>;
   closeEvent: () => Promise<void>;
@@ -94,24 +93,6 @@ export const useEventStore = create<EventState>((set, get) => ({
     set({ isLoading: false });
   },
 
-  updateFinalStock: async (eventStockId, finalQty) => {
-    // Aggiornamento ottimistico locale
-    set(state => ({
-      eventStocks: state.eventStocks.map(es => 
-        es.id === eventStockId ? { ...es, final_qty: finalQty } : es
-      )
-    }));
-    
-    // Persistenza immediata su DB per evitare perdita dati
-    try {
-      await supabase
-        .from('event_stocks')
-        .update({ final_qty: finalQty })
-        .eq('id', eventStockId);
-    } catch (err) {
-      console.error("Errore salvataggio giacenza finale:", err);
-    }
-  },
 
   addFinalCount: async (eventStockId, qty, operatorName) => {
     // 1. Inserimento del conteggio parziale
