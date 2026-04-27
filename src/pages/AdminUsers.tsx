@@ -193,7 +193,10 @@ export default function AdminUsers() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                  <div className="px-2 py-1 rounded bg-accent-orange/10 text-accent-orange text-[9px] font-black uppercase tracking-widest border border-accent-orange/20">
+                  <div className={cn(
+                    "px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest border",
+                    p.role === 'osservatore' ? "bg-blue-500/10 text-blue-500 border-blue-500/20" : "bg-accent-orange/10 text-accent-orange border-accent-orange/20"
+                  )}>
                     {p.role}
                   </div>
                   {saveStatus[p.id] === 'saved' && (
@@ -222,6 +225,7 @@ export default function AdminUsers() {
                     onChange={(e) => handleUpdateRole(p.id, e.target.value)}
                   >
                     <option value="staff">Staff</option>
+                    <option value="osservatore">Osservatore</option>
                     <option value="admin">Titolare (Admin)</option>
                     <option value="super_admin">Super Admin</option>
                   </select>

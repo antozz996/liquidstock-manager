@@ -48,7 +48,7 @@ function App() {
           <Route path="/history/:eventId" element={<ReportPage />} />
           <Route path="/arrivals" element={<Arrivals />} />
           <Route path="/log" element={<ActivityLog />} />
-          {(role === 'admin' || role === 'super_admin' || role === 'staff') && <Route path="/analytics" element={<Analytics />} />}
+          {(role === 'admin' || role === 'super_admin' || role === 'staff' || role === 'osservatore') && <Route path="/analytics" element={<Analytics />} />}
           {(role === 'admin' || role === 'super_admin' || role === 'staff') && <Route path="/team" element={<Settings />} />}
           {role === 'super_admin' && <Route path="/admin/venues" element={<AdminVenues />} />}
           {role === 'super_admin' && <Route path="/admin/users" element={<AdminUsers />} />}

@@ -9,14 +9,20 @@ export function BottomNav() {
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
-    { name: "Arrivi", path: "/arrivals", icon: Truck },
-    { name: "Serata", path: "/events", icon: CalendarClock },
+    ...(role !== 'osservatore' ? [
+      { name: "Arrivi", path: "/arrivals", icon: Truck },
+      { name: "Serata", path: "/events", icon: CalendarClock },
+    ] : []),
     { name: "Magazzino", path: "/products", icon: Package },
-    ...(role === 'admin' || role === 'super_admin' ? [
+    ...(role === 'admin' || role === 'super_admin' || role === 'osservatore' ? [
       { name: "Storia", path: "/history", icon: History },
-      { name: "Log", path: "/log", icon: Activity },
+      ...(role !== 'osservatore' ? [
+        { name: "Log", path: "/log", icon: Activity },
+      ] : []),
       { name: "Analisi", path: "/analytics", icon: BarChart3 },
-      { name: "Team", path: "/team", icon: Users },
+      ...(role !== 'osservatore' ? [
+        { name: "Team", path: "/team", icon: Users },
+      ] : []),
     ] : []),
   ];
 

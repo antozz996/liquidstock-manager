@@ -44,7 +44,7 @@ export default function ProductsList() {
     <div className="space-y-4 pt-4 pb-20">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Magazzino</h1>
-        {(role === 'admin' || role === 'super_admin') && (
+        {(role === 'admin' || role === 'super_admin' || role === 'osservatore') && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -124,7 +124,7 @@ export default function ProductsList() {
                     <div>
                       <p className="font-semibold text-white">{p.name}</p>
                       <div className="flex flex-col gap-1 mt-1">
-                        {(role === 'admin' || role === 'super_admin') ? (
+                        {(role === 'admin' || role === 'super_admin' || role === 'osservatore') ? (
                           <>
                             <p className="text-[10px] font-black uppercase tracking-widest text-primary">Costo Unitario: {p.cost_price.toFixed(2)}€</p>
                             <p className="text-[10px] font-medium text-muted-foreground uppercase">Valore Totale: {(p.current_stock * p.cost_price).toFixed(2)}€</p>
@@ -139,7 +139,7 @@ export default function ProductsList() {
                         <p className="text-[10px] text-muted-foreground uppercase font-bold mb-0.5">Giacenza</p>
                         <p className={cn(
                           "text-xl font-bold",
-                          (role === 'admin' || role === 'super_admin') && p.min_threshold > 0 && p.current_stock <= p.min_threshold 
+                          (role === 'admin' || role === 'super_admin' || role === 'osservatore') && p.min_threshold > 0 && p.current_stock <= p.min_threshold 
                             ? 'text-accent-orange' 
                             : 'text-accent-green'
                         )}>

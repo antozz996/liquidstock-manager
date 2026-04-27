@@ -213,7 +213,7 @@ export const useEventStore = create<EventState>((set, get) => ({
       const { data: allStocks } = await supabase
         .from('event_stocks')
         .select('*, product:products(*)')
-        .eq('eventId', eventId);
+        .eq('event_id', eventId);
 
       if (allStocks) {
         const summary = calculateEventReport(allStocks as unknown as EventStock[]);

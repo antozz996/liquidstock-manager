@@ -76,7 +76,7 @@ export default function Dashboard() {
           <span className="text-3xl font-bold">{activeProducts.length}</span>
         </div>
 
-        {(role === 'admin' || role === 'super_admin') && (
+        {(role === 'admin' || role === 'super_admin' || role === 'osservatore') && (
           <div className="rounded-xl border border-accent-orange/50 bg-accent-orange/10 p-4 shadow-sm flex flex-col justify-between">
             <div className="flex items-center gap-2 text-accent-orange mb-2">
               <AlertTriangle className="w-5 h-5" />
@@ -88,7 +88,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {(role === 'admin' || role === 'super_admin') && (
+        {(role === 'admin' || role === 'super_admin' || role === 'osservatore') && (
           <div className="rounded-xl border border-muted bg-card p-4 shadow-sm flex flex-col justify-between col-span-2">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Package className="w-5 h-5" />
