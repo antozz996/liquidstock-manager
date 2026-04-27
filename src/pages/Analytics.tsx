@@ -114,19 +114,20 @@ export default function Analytics() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="p-3 md:p-5 bg-white/5 border-white/5 flex flex-col justify-between min-h-[100px]">
+          <div className="flex justify-between items-center opacity-60">
             <Calendar size={14} className="text-primary" />
-            <span className="text-[8px] font-black uppercase text-muted-foreground">Totali</span>
+            <span className="text-[8px] font-black uppercase">Totali</span>
           </div>
           <div>
-            <p className="text-2xl font-black text-white">{totalEvents}</p>
-            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Serate Archiviate</p>
+            <p className="text-xl md:text-2xl font-black text-white leading-tight">{totalEvents}</p>
+            <p className="text-[8px] md:text-[9px] font-bold uppercase text-muted-foreground tracking-widest truncate">Serate Archiviate</p>
           </div>
         </Card>
-        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
+
+        <Card className="p-3 md:p-5 bg-white/5 border-white/5 flex flex-col justify-between min-h-[100px]">
+          <div className="flex justify-between items-center opacity-60">
             <Euro size={14} className="text-accent-green" />
             <span className={cn(
               "flex items-center text-[8px] font-black uppercase",
@@ -137,28 +138,30 @@ export default function Analytics() {
             </span>
           </div>
           <div>
-            <p className="text-2xl font-black text-white">{formatCurrency(totalCosts)}</p>
-            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Costo Totale</p>
+            <p className="text-xl md:text-2xl font-black text-white leading-tight truncate">{formatCurrency(totalCosts)}</p>
+            <p className="text-[8px] md:text-[9px] font-bold uppercase text-muted-foreground tracking-widest truncate">Costo Totale</p>
           </div>
         </Card>
-        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
+
+        <Card className="p-3 md:p-5 bg-white/5 border-white/5 flex flex-col justify-between min-h-[100px]">
+          <div className="flex justify-between items-center opacity-60">
             <TrendingUp size={14} className="text-accent-orange" />
-            <span className="text-[8px] font-black uppercase text-muted-foreground">Media</span>
+            <span className="text-[8px] font-black uppercase">Media</span>
           </div>
           <div>
-            <p className="text-2xl font-black text-white">{formatCurrency(avgCostPerEvent)}</p>
-            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Costo x Serata</p>
+            <p className="text-xl md:text-2xl font-black text-white leading-tight truncate">{formatCurrency(avgCostPerEvent)}</p>
+            <p className="text-[8px] md:text-[9px] font-bold uppercase text-muted-foreground tracking-widest truncate">Costo x Serata</p>
           </div>
         </Card>
-        <Card className="p-4 bg-white/5 border-white/5 space-y-2">
-          <div className="flex justify-between items-center">
+
+        <Card className="p-3 md:p-5 bg-white/5 border-white/5 flex flex-col justify-between min-h-[100px]">
+          <div className="flex justify-between items-center opacity-60">
             <Package size={14} className="text-blue-500" />
-            <span className="text-[8px] font-black uppercase text-muted-foreground">Volume</span>
+            <span className="text-[8px] font-black uppercase">Volume</span>
           </div>
           <div>
-            <p className="text-2xl font-black text-white">{totalVolume.toLocaleString()}</p>
-            <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Unità Consumate</p>
+            <p className="text-xl md:text-2xl font-black text-white leading-tight">{totalVolume.toLocaleString()}</p>
+            <p className="text-[8px] md:text-[9px] font-bold uppercase text-muted-foreground tracking-widest truncate">Unità Consumate</p>
           </div>
         </Card>
       </div>
