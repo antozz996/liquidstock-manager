@@ -93,14 +93,22 @@ export const useEventStore = create<EventState>((set, get) => ({
   },
 
   updateFinalStock: async (eventStockId, finalQty) => {
+    // Aggiornamento ottimistico locale
     set(state => ({
       eventStocks: state.eventStocks.map(es => 
         es.id === eventStockId ? { ...es, final_qty: finalQty } : es
       )
     }));
     
-    // Salviamo subito via API per non perdere i dati se l'app si ricarica? 
-    // Oppure salviamo solo tutto in blocco alla chiusura. Facciamo tutto in blocco.
+    // Persistenza immediata su DB per evitare perdita dati
+    try {
+      await supabase
+        .from('event_stocks')
+        .update({ final_qty: finalQty })
+        .eq('id', eventStockId);
+    } catch (err) {
+      console.error("Errore salvataggio giacenza finale:", err);
+    }
   },
 
   closeEvent: async () => {
@@ -109,66 +117,71 @@ export const useEventStore = create<EventState>((set, get) => ({
     const { venueId } = useAuthStore.getState();
     
     set({ isLoading: true });
-    // Questo andrebbe fatto con una Remote Procedure (RPC) per transazione sicura,
-    // ma simuliamo le chiamate multiple per la PWA standalone.
     
-    // 1. Chiude Evento
-    const closedAt = new Date().toISOString();
-    // simuliamo +4 giorni per edit window
-    const editableUntil = new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
-    
-    await supabase.from('events').update({
-      status: 'closed',
-      closed_at: closedAt,
-      is_editable_until: editableUntil
-    }).eq('id', currentEvent.id);
+    try {
+      // 1. Aggiorna consumi e valori in event_stocks (per tutti i prodotti compilati)
+      for (const es of eventStocks) {
+        if (es.final_qty !== null && es.product) {
+          const consumed = es.initial_qty - es.final_qty;
+          const cost_value = consumed * es.product.cost_price;
+          const stock_value_cost = es.final_qty * es.product.cost_price;
 
-    // 2. Aggiorna final_qty in event_stocks e prepara dati per report
-    for (const es of eventStocks) {
-      if (es.final_qty !== null && es.product) {
-        const consumed = es.initial_qty - es.final_qty;
-        const cost_value = consumed * es.product.cost_price;
-        const stock_value_cost = es.final_qty * es.product.cost_price;
-
-        await supabase.from('event_stocks').update({
-          final_qty: es.final_qty,
-          consumed: consumed,
-          cost_value: cost_value,
-          stock_value_cost: stock_value_cost,
-        }).eq('id', es.id);
-        
-        // 3. Aggiorna nuovo stock del prodotto
-        await supabase.from('products').update({
-          current_stock: es.final_qty
-        }).eq('id', es.product.id);
+          await supabase.from('event_stocks').update({
+            final_qty: es.final_qty,
+            consumed: consumed,
+            cost_value: cost_value,
+            stock_value_cost: stock_value_cost,
+          }).eq('id', es.id);
+          
+          // 2. Aggiorna nuovo stock reale del prodotto
+          await supabase.from('products').update({
+            current_stock: es.final_qty
+          }).eq('id', es.product.id);
+        }
       }
+
+      // 3. Genera e salva il Report finale
+      const summary = calculateEventReport(eventStocks);
+      const { error: reportError } = await supabase.from('reports').insert([{
+        event_id: currentEvent.id,
+        total_cost_consumed: summary.total_cost_consumed,
+        total_stock_value_cost: summary.total_stock_value_cost,
+        details_json: summary.details_json,
+        venue_id: venueId
+      }]);
+
+      if (reportError) throw reportError;
+
+      // 4. Chiude l'Evento (Solo ora che tutto il resto è andato a buon fine!)
+      const closedAt = new Date().toISOString();
+      const editableUntil = new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
+      
+      await supabase.from('events').update({
+        status: 'closed',
+        closed_at: closedAt,
+        is_editable_until: editableUntil
+      }).eq('id', currentEvent.id);
+
+      // 5. Registra nell'Activity Log
+      const { user } = useAuthStore.getState();
+      await supabase.from('activity_log').insert([{
+        venue_id: venueId,
+        user_id: user?.id,
+        action_type: 'event_close',
+        action_id: currentEvent.id,
+        details: { 
+          event_name: currentEvent.name,
+          summary: summary 
+        }
+      }]);
+
+      set({ currentEvent: null, eventStocks: [] });
+    } catch (error) {
+      console.error("Errore durante la chiusura serata:", error);
+      alert("Si è verificato un errore durante il salvataggio. Riprova tra un istante.");
+    } finally {
+      set({ isLoading: false });
     }
-
-    // 4. Genera e salva il Report finale con venue_id
-    const summary = calculateEventReport(eventStocks);
-    await supabase.from('reports').insert([{
-      event_id: currentEvent.id,
-      total_cost_consumed: summary.total_cost_consumed,
-      total_stock_value_cost: summary.total_stock_value_cost,
-      details_json: summary.details_json,
-      venue_id: venueId
-    }]);
-
-    // 5. Registra nell'Activity Log
-    const { user } = useAuthStore.getState();
-    await supabase.from('activity_log').insert([{
-      venue_id: venueId,
-      user_id: user?.id,
-      action_type: 'event_close',
-      action_id: currentEvent.id,
-      details: { 
-        event_name: currentEvent.name,
-        summary: summary 
-      }
-    }]);
-
-    set({ currentEvent: null, eventStocks: [] });
-    set({ isLoading: false });
   },
 
   softEditReport: async (eventId, reportId, productId, newFinalQty, note) => {

@@ -78,58 +78,64 @@ export const useArrivalStore = create<ArrivalState>((set, get) => ({
 
     set({ isLoading: true });
 
-    // 1. Salva gli articoli della sessione
-    const itemsToInsert = Object.entries(items)
-      .filter(([_, qty]) => qty > 0)
-      .map(([productId, qty]) => ({
-        session_id: activeSession.id,
-        product_id: productId,
-        quantity: qty
-      }));
+    try {
+      // 1. Salva gli articoli della sessione
+      const itemsToInsert = Object.entries(items)
+        .filter(([_, qty]) => qty > 0)
+        .map(([productId, qty]) => ({
+          session_id: activeSession.id,
+          product_id: productId,
+          quantity: qty
+        }));
 
-    if (itemsToInsert.length > 0) {
-      await supabase.from('restock_items').insert(itemsToInsert);
+      if (itemsToInsert.length > 0) {
+        await supabase.from('restock_items').insert(itemsToInsert);
 
-      // 2. Aggiorna il magazzino reale (current_stock)
-      for (const item of itemsToInsert) {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('current_stock')
-          .eq('id', item.product_id)
-          .single();
-        
-        if (prod) {
-          const newStock = (prod.current_stock || 0) + item.quantity;
-          await supabase
+        // 2. Aggiorna il magazzino reale (current_stock)
+        for (const item of itemsToInsert) {
+          const { data: prod } = await supabase
             .from('products')
-            .update({ current_stock: newStock })
-            .eq('id', item.product_id);
+            .select('current_stock')
+            .eq('id', item.product_id)
+            .single();
+          
+          if (prod) {
+            const newStock = (prod.current_stock || 0) + item.quantity;
+            await supabase
+              .from('products')
+              .update({ current_stock: newStock })
+              .eq('id', item.product_id);
+          }
         }
       }
+
+      // 3. Chiudi la sessione (Solo se i passaggi precedenti sono ok)
+      await supabase
+        .from('restock_sessions')
+        .update({ 
+          status: 'closed', 
+          closed_at: new Date().toISOString(),
+          notes 
+        })
+        .eq('id', activeSession.id);
+
+      // 4. Registra nell'Activity Log
+      const { user } = useAuthStore.getState();
+      await supabase.from('activity_log').insert([{
+        venue_id: activeSession.venue_id,
+        user_id: user?.id,
+        action_type: 'restock_close',
+        action_id: activeSession.id,
+        details: { items: itemsToInsert }
+      }]);
+
+      set({ activeSession: null, items: {} });
+      await useProductStore.getState().fetchProducts();
+    } catch (error) {
+      console.error("Errore durante la chiusura del carico:", error);
+      alert("Errore durante il salvataggio del carico. Riprova.");
+    } finally {
+      set({ isLoading: false });
     }
-
-    // 3. Chiudi la sessione
-    await supabase
-      .from('restock_sessions')
-      .update({ 
-        status: 'closed', 
-        closed_at: new Date().toISOString(),
-        notes 
-      })
-      .eq('id', activeSession.id);
-
-    // 4. Registra nell'Activity Log
-    const { user } = useAuthStore.getState();
-    await supabase.from('activity_log').insert([{
-      venue_id: activeSession.venue_id,
-      user_id: user?.id,
-      action_type: 'restock_close',
-      action_id: activeSession.id,
-      details: { items: itemsToInsert }
-    }]);
-
-    set({ activeSession: null, items: {} });
-    await useProductStore.getState().fetchProducts();
-    set({ isLoading: false });
   }
 }));
