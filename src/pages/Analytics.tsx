@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
@@ -47,11 +47,6 @@ export default function Analytics() {
     );
   }
 
-  // 1. Dati per Trend Costi (Line Chart)
-  const trendData = reports.map(r => ({
-    name: r.event?.name.slice(0, 10),
-    costo: r.total_cost_consumed
-  })).slice(-10);
 
   // 2. Dati per Top Prodotti (Aggregati dai JSON detials)
   const productConsumption: Record<string, number> = {};
@@ -64,10 +59,6 @@ export default function Analytics() {
     });
   });
 
-  const topProducts = Object.entries(productConsumption)
-    .map(([name, qty]) => ({ name, qty }))
-    .sort((a, b) => b.qty - a.qty)
-    .slice(0, 5);
 
   // 3. Dati per Categorie (Pie Chart)
   const categoryCost: Record<string, number> = {};
