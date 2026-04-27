@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
-import { ShieldCheck, UserCog, Building2, Search, Mail, Trash2, CheckCircle2 } from "lucide-react";
+import { Search, Mail, Trash2, CheckCircle2, UserPlus, X, Lock, User } from "lucide-react";
 import { Input } from "../components/ui/Input";
+import { Button } from "../components/ui/Button";
 import { cn } from "../lib/utils";
 
 interface Profile {
@@ -28,6 +29,17 @@ export default function AdminUsers() {
 
   const [venueAccess, setVenueAccess] = useState<Record<string, string[]>>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, 'saving' | 'saved' | null>>({});
+  
+  // Create User Form State
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newUser, setNewUser] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    role: "staff" as any,
+    venueId: ""
+  });
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -147,6 +159,34 @@ export default function AdminUsers() {
     }
   };
 
+  const { signUp } = useAuthStore();
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUser.email || !newUser.password || !newUser.fullName) {
+      alert("Tutti i campi sono obbligatori.");
+      return;
+    }
+
+    setIsCreating(true);
+    const { error } = await signUp(
+      newUser.email, 
+      newUser.password, 
+      newUser.role, 
+      newUser.venueId || undefined, 
+      newUser.fullName
+    );
+
+    if (error) {
+      alert(`Errore: ${error.message || "Impossibile creare l'utente."}`);
+    } else {
+      alert("Utente creato con successo! È stata inviata un'email di conferma (se abilitata). Il profilo apparirà tra pochi secondi.");
+      setShowAddForm(false);
+      setNewUser({ email: "", password: "", fullName: "", role: "staff", venueId: "" });
+      setTimeout(fetchData, 2000); // Refresh list
+    }
+    setIsCreating(false);
+  };
+
   const filtered = profiles.filter(p => 
     (p.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
     (p.venues?.name?.toLowerCase() || "").includes(search.toLowerCase())
@@ -158,10 +198,101 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6 pt-4 pb-24">
-      <div className="flex items-center gap-2">
-        <UserCog className="text-accent-orange w-5 h-5" />
-        <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white leading-none">Gestione Utenti</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <UserCog className="text-accent-orange w-5 h-5" />
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic text-white leading-none">Gestione Utenti</h1>
+        </div>
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)}
+          variant={showAddForm ? "ghost" : "secondary"}
+          className="h-9 px-3 gap-2 text-[10px] font-black uppercase tracking-widest border border-white/5"
+        >
+          {showAddForm ? <><X size={14} /> Annulla</> : <><UserPlus size={14} /> Nuovo Utente</>}
+        </Button>
       </div>
+
+      {showAddForm && (
+        <Card className="p-5 border-primary/30 bg-primary/5 animate-in slide-in-from-top-4 duration-300">
+          <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+            <UserPlus size={14} /> Registra Collaboratore
+          </h3>
+          <form onSubmit={handleAddUser} className="space-y-4">
+            <div className="space-y-3">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Nome Completo" 
+                  className="pl-9 bg-black/40"
+                  value={newUser.fullName}
+                  onChange={e => setNewUser({...newUser, fullName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  type="email"
+                  placeholder="Email Aziendale" 
+                  className="pl-9 bg-black/40"
+                  value={newUser.email}
+                  onChange={e => setNewUser({...newUser, email: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input 
+                  type="password"
+                  placeholder="Password (min 6 caratteri)" 
+                  className="pl-9 bg-black/40"
+                  value={newUser.password}
+                  onChange={e => setNewUser({...newUser, password: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ruolo</label>
+                <select 
+                  className="w-full h-10 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white"
+                  value={newUser.role}
+                  onChange={e => setNewUser({...newUser, role: e.target.value})}
+                >
+                  <option value="staff">Staff</option>
+                  <option value="osservatore">Osservatore</option>
+                  <option value="admin">Titolare (Admin)</option>
+                  <option value="super_admin">Super Admin</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Locale Assegnato</label>
+                <select 
+                  className="w-full h-10 bg-black/40 border border-white/10 rounded-lg px-3 text-xs text-white"
+                  value={newUser.venueId}
+                  onChange={e => setNewUser({...newUser, venueId: e.target.value})}
+                  required
+                >
+                  <option value="">Seleziona...</option>
+                  {venues.map(v => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full h-12 font-black uppercase italic tracking-widest"
+              disabled={isCreating}
+            >
+              {isCreating ? "Creazione in corso..." : "Crea Account"}
+            </Button>
+          </form>
+        </Card>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
