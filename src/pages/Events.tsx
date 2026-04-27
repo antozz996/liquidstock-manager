@@ -5,15 +5,15 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card } from "../components/ui/Card";
 import { formatCurrency } from "../lib/formatters";
-import { AlertCircle, Plus, RotateCcw, User } from "lucide-react";
-import { groupBy, CATEGORY_ORDER } from "../lib/utils";
+import { AlertCircle, Plus, RotateCcw } from "lucide-react";
+import { groupBy, CATEGORY_ORDER, cn } from "../lib/utils";
 
 import { useAuthStore } from "../store/useAuthStore";
 
 export default function EventsSpace() {
   const { 
     currentEvent, eventStocks, isLoading, fetchCurrentEvent, 
-    openNewEvent, updateFinalStock, addFinalCount, clearFinalCounts, closeEvent 
+    openNewEvent, addFinalCount, clearFinalCounts, closeEvent 
   } = useEventStore();
   const { products, fetchProducts } = useProductStore();
   const { user, role } = useAuthStore();
@@ -169,7 +169,7 @@ export default function EventsSpace() {
                             onChange={(e) => setNewCounts({ ...newCounts, [stock.id]: e.target.value })}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && newCounts[stock.id]) {
-                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.full_name || 'Staff');
+                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.email || 'Staff');
                                 setNewCounts({ ...newCounts, [stock.id]: "" });
                               }
                             }}
@@ -180,7 +180,7 @@ export default function EventsSpace() {
                             className="h-9 w-9 p-0 border-white/5"
                             onClick={() => {
                               if (newCounts[stock.id]) {
-                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.full_name || 'Staff');
+                                addFinalCount(stock.id, parseFloat(newCounts[stock.id]), user?.email || 'Staff');
                                 setNewCounts({ ...newCounts, [stock.id]: "" });
                               }
                             }}
