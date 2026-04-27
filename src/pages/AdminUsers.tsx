@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
-import { Search, Mail, Trash2, CheckCircle2, UserPlus, X, Lock, User, UserCog, ShieldCheck, Building2 } from "lucide-react";
+import { Search, Mail, Trash2, CheckCircle2, UserPlus, X, Lock, User, UserCog, ShieldCheck, Building2, Edit2, Save } from "lucide-react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { cn } from "../lib/utils";
@@ -40,6 +40,10 @@ export default function AdminUsers() {
     venueId: ""
   });
   const [isCreating, setIsCreating] = useState(false);
+
+  // Rename state
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -187,6 +191,23 @@ export default function AdminUsers() {
     setIsCreating(false);
   };
 
+  const handleUpdateName = async (userId: string) => {
+    if (!editingName.trim()) return;
+    setSaveStatus({ ...saveStatus, [userId]: 'saving' });
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: editingName })
+      .eq('id', userId);
+    
+    if (!error) {
+      setProfiles(profiles.map(p => p.id === userId ? { ...p, full_name: editingName } : p));
+      setEditingUserId(null);
+      setSaveStatus({ ...saveStatus, [userId]: 'saved' });
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, [userId]: null })), 2000);
+    }
+  };
+
   const filtered = profiles.filter(p => 
     (p.full_name?.toLowerCase() || "").includes(search.toLowerCase()) ||
     (p.venues?.name?.toLowerCase() || "").includes(search.toLowerCase())
@@ -318,7 +339,35 @@ export default function AdminUsers() {
                     <ShieldCheck size={20} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-white uppercase tracking-tight">{p.full_name || "Utente Senza Nome"}</h4>
+                    {editingUserId === p.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          className="h-8 py-0 px-2 text-xs w-40 bg-black/40"
+                          autoFocus
+                        />
+                        <button onClick={() => handleUpdateName(p.id)} className="text-accent-green hover:scale-110 transition-transform">
+                          <Save size={16} />
+                        </button>
+                        <button onClick={() => setEditingUserId(null)} className="text-muted-foreground hover:scale-110 transition-transform">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 group">
+                        <h4 className="font-bold text-white uppercase tracking-tight">{p.full_name || "Utente Senza Nome"}</h4>
+                        <button 
+                          onClick={() => {
+                            setEditingUserId(p.id);
+                            setEditingName(p.full_name || "");
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-white"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-[10px] text-muted-foreground font-black uppercase opacity-60 flex items-center gap-1">
                       <Mail size={10} /> {p.id.slice(0, 12)}...
                     </p>
