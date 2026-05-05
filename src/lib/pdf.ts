@@ -85,10 +85,27 @@ export const generateReorderPDF = (reorderItems: any[]) => {
   doc.setTextColor(100);
   doc.text(`Data: ${formatDate(new Date())}`, 14, 30);
 
-  const tableData = reorderItems.map(item => [
-    item.name,
-    formatNumber(item.qty_to_order),
-  ]);
+  const tableData = reorderItems.map(item => {
+    // Se abbiamo già una stringa formattata (dalla pagina di revisione), usiamola
+    if (item.displayQty) {
+      return [item.name, item.displayQty];
+    }
+
+    const name = item.name.toUpperCase();
+    let displayQty = '';
+    
+    if (name.includes('ABACO') || name.includes('ABACA')) {
+      const ct = Math.ceil(item.qty_to_order / 9);
+      displayQty = ct > 0 ? `${ct} CT` : '0';
+    } else if (name.includes('SCHWEPPES') || name.includes('ACQUA')) {
+      displayQty = item.qty_to_order > 0 ? `${Math.ceil(item.qty_to_order)} BOX` : '0';
+    } else {
+      const ct = Math.ceil(item.qty_to_order / 6);
+      displayQty = ct > 0 ? `${ct} CT` : '0';
+    }
+
+    return [item.name, displayQty];
+  });
 
   autoTable(doc, {
     startY: 40,

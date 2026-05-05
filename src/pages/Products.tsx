@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useProductStore } from "../store/useProductStore";
 import { Search, Plus, Upload } from "lucide-react";
 import { Input } from "../components/ui/Input";
@@ -15,6 +16,7 @@ import type { Product } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 
 export default function ProductsList() {
+  const navigate = useNavigate();
   const { products, fetchProducts, isLoading } = useProductStore();
   const { role } = useAuthStore();
   const [search, setSearch] = useState("");
@@ -50,9 +52,7 @@ export default function ProductsList() {
             size="sm" 
             className="h-9 border-accent-orange/50 text-accent-orange"
             onClick={() => {
-              const items = calculateReorder(products);
-              if(items.length > 0) generateReorderPDF(items);
-              else alert("Nessun prodotto sotto soglia!");
+              navigate('/order-review');
             }}
           >
             Genera Ordine
