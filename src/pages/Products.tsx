@@ -5,8 +5,6 @@ import { Search, Plus, Upload } from "lucide-react";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
-import { calculateReorder } from "../lib/calculations";
-import { generateReorderPDF } from "../lib/pdf";
 import ImportModal from "../components/ImportModal";
 import AddProductModal from "../components/AddProductModal";
 import EditProductModal from "../components/EditProductModal";
