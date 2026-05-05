@@ -105,7 +105,7 @@ export const generateReorderPDF = (reorderItems: any[]) => {
     }
 
     return [item.name, displayQty];
-  });
+  }).filter(row => !row[1].startsWith('0'));
 
   autoTable(doc, {
     startY: 40,
