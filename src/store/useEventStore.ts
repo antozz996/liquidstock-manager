@@ -133,10 +133,20 @@ export const useEventStore = create<EventState>((set, get) => ({
             stock_value_cost: stock_value_cost,
           }).eq('id', es.id);
           
-          // 2. Aggiorna nuovo stock reale del prodotto
-          await supabase.from('products').update({
-            current_stock: es.final_qty
-          }).eq('id', es.product.id);
+          // 2. Aggiorna nuovo stock reale del prodotto in modo relativo (per non sovrascrivere arrivi/restock intermedi)
+          const { data: prod } = await supabase
+            .from('products')
+            .select('current_stock')
+            .eq('id', es.product.id)
+            .single();
+
+          if (prod) {
+            const newStock = (prod.current_stock || 0) - consumed;
+            await supabase
+              .from('products')
+              .update({ current_stock: newStock })
+              .eq('id', es.product.id);
+          }
         }
       }
 

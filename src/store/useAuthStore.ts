@@ -49,11 +49,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
       }
         
+      const savedVenueId = localStorage.getItem('selectedVenueId');
+      const savedRole = localStorage.getItem('selectedRole');
+        
       set({ 
         user, 
-        role: profile?.role || 'staff', 
+        role: (savedRole as any) || profile?.role || 'staff', 
         actualRole: profile?.role || 'staff', 
-        venueId: profile?.venue_id || null,
+        venueId: savedVenueId || profile?.venue_id || null,
         isLoading: false 
       });
     } else {
@@ -72,6 +75,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         .eq('id', data.user.id)
         .single();
 
+      // Rimuovi eventuali override precedenti per evitare interferenze
+      localStorage.removeItem('selectedVenueId');
+      localStorage.removeItem('selectedRole');
+
       set({ 
         user: data.user, 
         role: profile?.role || 'staff', 
@@ -88,6 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   switchVenue: (venueId) => {
     console.log("Switch locale a:", venueId);
+    localStorage.setItem('selectedVenueId', venueId);
     set({ venueId });
     // Dopo il cambio, ricarichiamo i dati (l'app reagirà allo stato)
     window.location.reload(); 
@@ -95,6 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setRole: (role) => {
     console.log("Switch ruolo a:", role);
+    localStorage.setItem('selectedRole', role);
     set({ role });
   },
 
@@ -134,6 +143,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    localStorage.removeItem('selectedVenueId');
+    localStorage.removeItem('selectedRole');
     set({ user: null, role: null, venueId: null, isLoading: false });
     await supabase.auth.signOut();
   }
