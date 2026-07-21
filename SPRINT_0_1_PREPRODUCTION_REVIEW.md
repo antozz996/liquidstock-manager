@@ -61,6 +61,6 @@ Origin consigliati:
 
 ## Evidenze automatiche
 
-- 96 test RLS/applicativi: PASS, inclusi Team su venue primaria/secondaria e isolamento multi-venue.
+- 101 test RLS/applicativi: PASS, inclusi admin venue B, Team su venue primaria/secondaria e isolamento multi-venue.
 - 52 test Edge/atomicità: PASS.
 - Casi inclusi: JWT assente/invalido, staff negato, admin cross-venue negato, super admin, metadata spoof, CORS, concorrenza, email esistente, fault profile/accesso, interruzione, revoca/scadenza, rate limit e hash-only.

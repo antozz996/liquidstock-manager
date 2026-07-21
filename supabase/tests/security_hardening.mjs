@@ -53,6 +53,7 @@ const [venueA, venueB] = venues;
 const noAccessUser = await createUser('no-access', 'staff');
 const staffUser = await createUser('staff', 'staff', venueA.id, [venueA.id]);
 const adminUser = await createUser('admin', 'admin', venueA.id, [venueA.id]);
+const adminBUser = await createUser('admin-b', 'admin', venueB.id, [venueB.id]);
 const secondaryAdminUser = await createUser('secondary-admin', 'admin', venueA.id, [venueA.id, venueB.id]);
 const superUser = await createUser('super', 'super_admin', venueA.id, [venueA.id]);
 const multiUser = await createUser('multi', 'staff', venueA.id, [venueA.id, venueB.id]);
@@ -78,6 +79,7 @@ check('direct signup disabled', Boolean(rawSignup.error));
 const noAccess = await clientFor(noAccessUser.email);
 const staff = await clientFor(staffUser.email);
 const admin = await clientFor(adminUser.email);
+const adminB = await clientFor(adminBUser.email);
 const secondaryAdmin = await clientFor(secondaryAdminUser.email);
 const superAdmin = await clientFor(superUser.email);
 const multi = await clientFor(multiUser.email);
@@ -89,6 +91,8 @@ check('authenticated without access sees own profile', ownProfile.id === noAcces
 
 const staffVenues = await must('staff venue RPC', staff.rpc('get_my_accessible_venues'));
 check('staff one venue', staffVenues.length === 1 && staffVenues[0].id === venueA.id);
+const adminBVenues = await must('admin B venue RPC', adminB.rpc('get_my_accessible_venues'));
+check('admin B isolated to venue B', adminBVenues.length === 1 && adminBVenues[0].id === venueB.id);
 const multiVenues = await must('multi venue RPC', multi.rpc('get_my_accessible_venues'));
 check('multi user two venues', multiVenues.length === 2);
 const superVenues = await must('super venue RPC', superAdmin.rpc('get_my_accessible_venues'));

@@ -38,9 +38,9 @@ Stato verificato il 21 luglio 2026 esclusivamente su Supabase locale ricostruito
 
 ## Test finali
 
-- `supabase/tests/security_hardening.mjs`: **96/96 PASS**.
+- `supabase/tests/security_hardening.mjs`: **101/101 PASS**.
 - `supabase/tests/registration_edge_cases.mjs`: **52/52 PASS**.
-- Totale test automatici security/RLS/Edge: **148/148 PASS**.
+- Totale test automatici security/RLS/Edge: **153/153 PASS**.
 - `supabase db lint --local`: PASS, zero errori.
 - TypeScript + Vite production build collegato al Supabase locale: PASS; resta il warning del chunk JS > 500 kB.
 - Browser Chrome headless: PASS per login, dashboard, prodotti, apertura/chiusura serata, arrivi, report/storico, analytics, team, registro attività, logout e venue multi-accesso con `localStorage` falsificato.
@@ -59,7 +59,7 @@ Stato verificato il 21 luglio 2026 esclusivamente su Supabase locale ricostruito
 2. I prezzi prodotto restano leggibili dallo staff perché fanno parte della riga `products`; separarli richiede una vista/RPC dedicata.
 3. Chiusura serata e arrivi fanno più chiamate client non atomiche; le RLS isolano i dati, ma un errore intermedio può lasciare stato parziale.
 4. Il browser segnala una richiesta `/auth/v1/logout` abortita durante l’automazione, pur con sessione chiusa e secondo login riuscito. Va ricontrollata in staging con latenza reale.
-5. `xlsx@0.18.5` conserva due advisory high e non ha un fix disponibile nel registry npm; dettagli in `DEPENDENCY_AUDIT.md`.
+5. Il blocker `xlsx@0.18.5` è chiuso nello Sprint 0.4: import Excel disabilitato, dipendenza e riferimenti bundle rimossi, `npm audit` a zero vulnerabilità.
 6. ESLint raggiunge correttamente i sorgenti ma restano 36 errori e 3 warning legacy fuori dal perimetro del fix di configurazione.
 7. Nessun preflight privilegiato è stato eseguito sui dati reali di produzione; è un gate obbligatorio.
 8. `Price Sentinel` non è stato letto né modificato. Sprint 1 non è stato iniziato.

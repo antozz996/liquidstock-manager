@@ -78,6 +78,8 @@ export default function ProductsList() {
               size="icon" 
               className="h-10 w-10 shrink-0 border-primary/30 text-primary"
               onClick={() => setIsImportOpen(true)}
+              aria-label="Importazione Excel temporaneamente non disponibile"
+              title="Importazione Excel temporaneamente non disponibile"
             >
               <Upload className="h-5 w-5" />
             </Button>

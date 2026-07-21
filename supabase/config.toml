@@ -418,3 +418,6 @@ verify_jwt = true
 
 [functions.register-with-invite]
 verify_jwt = false
+
+[functions.cors-probe]
+verify_jwt = false

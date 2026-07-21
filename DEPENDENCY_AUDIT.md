@@ -27,7 +27,7 @@ L’aggiornamento è stato eseguito con `npm audit fix`, senza `--force`. Non so
 
 ## Stato finale
 
-`npm audit`: una vulnerabilità high residua, esclusivamente `xlsx@0.18.5`.
+Al termine dello Sprint 0.2, `npm audit` riportava una vulnerabilità high residua, esclusivamente `xlsx@0.18.5`.
 
 `xlsx` è realmente usato a runtime per interpretare file `.xlsx/.xls`, quindi non è classificabile come falso positivo o sola dipendenza di sviluppo. Il registry npm non offre una versione corretta. L’intervento proposto è uno sprint separato per:
 
@@ -35,5 +35,16 @@ L’aggiornamento è stato eseguito con `npm audit fix`, senza `--force`. Non so
 2. limitare dimensione e provenienza dei file nel frattempo;
 3. creare fixture per file corrotti, formule, range patologici e prototype pollution;
 4. verificare import prodotti e generazione template prima della sostituzione.
+
+Non è stato usato `npm audit fix --force`.
+
+## Chiusura Sprint 0.4
+
+L’importazione Excel è stata temporaneamente disabilitata, ogni import del parser è stato rimosso e `xlsx` è stato eliminato da `package.json` e `package-lock.json`.
+
+- `npm ci`: PASS;
+- `npm audit`: zero vulnerabilità;
+- `npm audit --json`: 0 info, 0 low, 0 moderate, 0 high, 0 critical;
+- nessun riferimento `xlsx` in `src`, lockfile, `node_modules` o bundle Vite.
 
 Non è stato usato `npm audit fix --force`.

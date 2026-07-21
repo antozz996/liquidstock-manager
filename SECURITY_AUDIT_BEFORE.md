@@ -24,7 +24,7 @@ Audit eseguito il 21 luglio 2026 sul dump schema-only ospitato `.tmp/hosted_sche
 9. `venue_access` ha RLS attiva ma nessuna policy: il selettore venue frontend dipende da una tabella che il client autenticato non può leggere in modo affidabile.
 10. Il frontend considera attendibili `selectedRole` e `selectedVenueId` da `localStorage`. Il ruolo falsificato controlla l’interfaccia; la venue falsificata viene usata nei filtri client.
 11. `restock_log` non contiene `venue_id` nello schema ospitato, mentre il frontend prova a inserirlo. Oltre all’errore funzionale, l’isolamento può avvenire solo tramite il prodotto padre.
-12. Le quattro funzioni `SECURITY DEFINER` sono concesse anche ad `anon` e `authenticated`; tre non fissano un `search_path` sicuro.
+12. Le quattro funzioni `SECURITY DEFINER` sono concesse anche ad `anon` e `authenticated`; nessuna fissa il `search_path` nella configurazione della funzione. Anche dove gli oggetti sono qualificati, l’hardening applica deny-by-default e `search_path = ''` a tutte.
 13. `SurgicalSetup` consente una registrazione admin dal browser e replica il problema dei metadata controllati dal client.
 
 ## Policy ospitate: inventario esatto

@@ -98,15 +98,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   registerWithInvite: async (token, email, password, fullName) => {
-    set({ isLoading: true });
     try {
       const { error } = await supabase.functions.invoke('register-with-invite', {
         body: { token, email, password, full_name: fullName },
       });
-      set({ isLoading: false });
       return { error };
     } catch (err) {
-      set({ isLoading: false });
       return { error: err };
     }
   },

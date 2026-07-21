@@ -92,6 +92,6 @@ Eseguire con dati sintetici e account dedicati:
 
 ## 9. Go / no-go
 
-**GO** solo se: backup ripristinabile, preflight tutto zero, 148/148 test equivalenti passano, smoke frontend pulito, login esistente funzionante, Team multi-venue verificato, CORS effettivo ristretto, nessun segreto nel bundle/log, rollback provato e approvazione formale presente.
+**GO** solo se: backup ripristinabile, preflight tutto PASS, 153/153 test equivalenti passano, smoke frontend pulito, login esistente funzionante, Team multi-venue verificato, CORS effettivo ristretto, nessun segreto nel bundle/log, rollback provato e approvazione formale presente.
 
 **NO-GO** per: target ambiguo o produzione, qualunque anomalia preflight, policy/grant inattesi, orfani, test multi-venue falliti, header CORS wildcard sul gateway, logout/login instabile, segreto esposto, rollback non riproducibile o differenze non spiegate rispetto al dump corrente.
