@@ -1,7 +1,16 @@
--- LiquidStock Sprint 0 production preflight (BEFORE hardening).
+-- LiquidStock Sprint 0 production preflight.
 -- Run as a privileged PostgreSQL role that can read auth.users and catalogs.
 -- The transaction is explicitly READ ONLY; this script performs SELECTs only.
 -- Every row in the first two result sets must report PASS.
+-- Usage:
+--   psql --set=target_state=baseline -f supabase/audit/preflight_security_hardening.sql
+--   psql --set=target_state=hardened -f supabase/audit/preflight_security_hardening.sql
+-- target_state defaults to baseline for backwards compatibility.
+
+\if :{?target_state}
+\else
+\set target_state baseline
+\endif
 
 begin transaction read only;
 
@@ -169,19 +178,31 @@ select check_name,observed_count,expected_count,
 from checks
 order by check_name;
 
--- Audited legacy schema fingerprint. Drift is a STOP even when it looks safer:
--- first refresh the hosted schema-only audit and review the difference.
-with snapshot(check_name, observed_count, expected_count) as (
-  select 'public_table_count', count(*)::bigint, 13::bigint
+-- Audited schema fingerprint for the requested release state. Drift is a STOP
+-- even when it looks safer: review the difference before continuing.
+with mode(target_state) as (
+  values (:'target_state'::text)
+),
+snapshot(check_name, observed_count, expected_count) as (
+  select 'target_state_valid',
+    case when (select target_state from mode) in ('baseline','hardened')
+      then 0::bigint else 1::bigint end,
+    0::bigint
+  union all
+  select 'public_table_count', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 13::bigint when 'hardened' then 15::bigint else -1::bigint end
   from pg_catalog.pg_tables where schemaname='public'
   union all
-  select 'public_policy_count', count(*)::bigint, 35::bigint
+  select 'public_policy_count', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 35::bigint when 'hardened' then 41::bigint else -1::bigint end
   from pg_catalog.pg_policies where schemaname='public'
   union all
-  select 'public_tables_without_rls', count(*)::bigint, 3::bigint
+  select 'public_tables_without_rls', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 3::bigint when 'hardened' then 0::bigint else -1::bigint end
   from pg_catalog.pg_tables where schemaname='public' and not rowsecurity
   union all
-  select 'open_policy_count', count(*)::bigint, 9::bigint
+  select 'open_policy_count', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 9::bigint when 'hardened' then 0::bigint else -1::bigint end
   from pg_catalog.pg_policies
   where schemaname='public'
     and (
@@ -189,11 +210,13 @@ with snapshot(check_name, observed_count, expected_count) as (
       or regexp_replace(coalesce(with_check,''),'[()[:space:]]','','g')='true'
     )
   union all
-  select 'anon_table_grants', count(*)::bigint, 91::bigint
+  select 'anon_table_grants', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 91::bigint when 'hardened' then 0::bigint else -1::bigint end
   from information_schema.role_table_grants
   where table_schema='public' and grantee='anon'
   union all
-  select 'unsafe_security_definer_functions', count(*)::bigint, 4::bigint
+  select 'unsafe_security_definer_functions', count(*)::bigint,
+    case (select target_state from mode) when 'baseline' then 4::bigint when 'hardened' then 0::bigint else -1::bigint end
   from pg_catalog.pg_proc p
   join pg_catalog.pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.prosecdef
@@ -222,9 +245,9 @@ with snapshot(check_name, observed_count, expected_count) as (
     ) then 0::bigint else 1::bigint end,
     0::bigint
 )
-select check_name,observed_count,expected_count,
+select mode.target_state,check_name,observed_count,expected_count,
   case when observed_count=expected_count then 'PASS' else 'STOP' end as release_status
-from snapshot
+from snapshot cross join mode
 order by check_name;
 
 -- Exact objects behind the security counters; no row values are returned.
