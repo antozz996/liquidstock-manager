@@ -10,19 +10,18 @@ declare
   affected_rows integer;
 begin
   update public.configs
-  set value = encode(extensions.gen_random_bytes(32), 'hex'),
+  set value = 'disabled:'||encode(extensions.gen_random_bytes(32), 'hex'),
       updated_at = timezone('utc', now())
-  where key = 'registration_code';
+  where key = 'registration_code'
+    and value !~ '^disabled:[0-9a-f]{64}$';
 
   get diagnostics affected_rows = row_count;
-  if affected_rows <> 1 then
-    raise exception 'legacy_registration_code_rotation_expected_1_row_found_%', affected_rows;
-  end if;
+  raise notice 'legacy_registration_code_rows_invalidated=%', affected_rows;
 end $$;
 
 select count(*) as rotated_marker_rows
 from public.configs
 where key = 'registration_code'
-  and value ~ '^[0-9a-f]{64}$';
+  and value ~ '^disabled:[0-9a-f]{64}$';
 
 commit;

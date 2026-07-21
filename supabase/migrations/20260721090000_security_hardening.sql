@@ -1,5 +1,6 @@
 -- LiquidStock Sprint 0 - deny-by-default multi-venue security hardening.
--- Production prerequisite: run audit/preflight_security_hardening.sql first.
+-- Production prerequisite: run the approved remediation, then require an all-PASS
+-- audit/preflight_security_hardening.sql result.
 
 begin;
 
@@ -21,6 +22,23 @@ begin
   if exists (select 1 from public.report_edit_log where report_id is null) then problems := array_append(problems, 'report_edit_log.report_id NULL'); end if;
   if exists (select 1 from public.profiles where role is null or role not in ('staff','admin','super_admin','osservatore')) then problems := array_append(problems, 'invalid profile role'); end if;
   if exists (
+    select 1 from public.configs c
+    left join public.venues v on v.id=c.venue_id
+    where c.key='registration_code' and (c.venue_id is null or v.id is null)
+  ) then problems := array_append(problems, 'registration_code invalid venue'); end if;
+  if not exists (
+    select 1
+    from pg_catalog.pg_constraint c
+    where c.conrelid='public.configs'::regclass
+      and c.contype in ('p','u')
+      and (
+        select array_agg(a.attname order by key_position.ordinality)
+        from unnest(c.conkey) with ordinality key_position(attnum,ordinality)
+        join pg_catalog.pg_attribute a
+          on a.attrelid=c.conrelid and a.attnum=key_position.attnum
+      ) = array['key','venue_id']::name[]
+  ) then problems := array_append(problems, 'configs missing unique (key, venue_id)'); end if;
+  if exists (
     select 1 from public.event_stocks es
     join public.events e on e.id=es.event_id join public.products p on p.id=es.product_id
     where e.venue_id is distinct from p.venue_id
@@ -38,6 +56,14 @@ begin
     raise exception 'SECURITY_HARDENING_PREFLIGHT_FAILED: %', array_to_string(problems, ', ');
   end if;
 end $$;
+
+-- Invalidate every venue-scoped legacy signup code. Multiple rows are valid;
+-- values stay hash-like random markers and are never returned to the client.
+update public.configs
+set value='disabled:'||encode(extensions.gen_random_bytes(32),'hex'),
+    updated_at=timezone('utc',now())
+where key='registration_code'
+  and value !~ '^disabled:[0-9a-f]{64}$';
 
 alter table public.products alter column venue_id set not null;
 alter table public.events alter column venue_id set not null;

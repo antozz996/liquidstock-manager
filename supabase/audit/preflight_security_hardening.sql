@@ -60,6 +60,11 @@ with checks(check_name, observed_count, expected_count) as (
   from public.configs c left join public.venues v on v.id=c.venue_id
   where v.id is null
   union all
+  select 'legacy_registration_codes_not_invalidated', count(*)::bigint, 0::bigint
+  from public.configs
+  where key='registration_code'
+    and value !~ '^disabled:[0-9a-f]{64}$'
+  union all
   select 'products_without_venue', count(*)::bigint, 0::bigint
   from public.products where venue_id is null
   union all
@@ -197,8 +202,25 @@ with snapshot(check_name, observed_count, expected_count) as (
       where setting like 'search_path=%'
     )
   union all
-  select 'legacy_registration_code_rows', count(*)::bigint, 1::bigint
+  -- Informational cardinality: one legacy row per venue is valid. Safety is
+  -- enforced by the scoped unique-key and orphan checks, not by a global count.
+  select 'legacy_registration_code_rows', count(*)::bigint, count(*)::bigint
   from public.configs where key='registration_code'
+  union all
+  select 'configs_key_venue_unique_key_missing',
+    case when exists (
+      select 1
+      from pg_catalog.pg_constraint c
+      where c.conrelid='public.configs'::regclass
+        and c.contype in ('p','u')
+        and (
+          select array_agg(a.attname order by key_position.ordinality)
+          from unnest(c.conkey) with ordinality key_position(attnum,ordinality)
+          join pg_catalog.pg_attribute a
+            on a.attrelid=c.conrelid and a.attnum=key_position.attnum
+        ) = array['key','venue_id']::name[]
+    ) then 0::bigint else 1::bigint end,
+    0::bigint
 )
 select check_name,observed_count,expected_count,
   case when observed_count=expected_count then 'PASS' else 'STOP' end as release_status

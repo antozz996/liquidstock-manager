@@ -109,10 +109,10 @@ Script preparato: `supabase/release/rotate_legacy_registration_code.sql`.
 Procedura:
 
 1. entrare nella finestra di manutenzione e impedire l’uso del vecchio frontend/signup;
-2. verificare backup e preflight PASS;
-3. eseguire lo script di rotazione con `psql -X -W` e password interattiva;
-4. verificare esclusivamente `rotated_marker_rows = 1`; il valore non viene restituito;
-5. applicare immediatamente la migration di hardening;
+2. verificare backup e che il preflight iniziale contenga esclusivamente gli STOP dati approvati;
+3. eseguire la remediation unica; lo script di sola rotazione resta idempotente per il caso in cui gli accessi siano già completi;
+4. verificare che `registration_code_rows_invalidated` coincida con le righe legacy attive e che il numero totale di righe `configs` resti invariato; una riga per venue è legittima e nessun valore viene restituito;
+5. rieseguire il preflight, richiedere solo `PASS` e applicare immediatamente la migration di hardening;
 6. verificare signup diretto disabilitato, `configs` non leggibile da anon/authenticated e payload legacy role/venue ignorati;
 7. se la migration non parte o fallisce, mantenere maintenance mode: non riattivare il vecchio signup con il valore precedente.
 

@@ -36,33 +36,39 @@ Eseguire dalla root del commit candidato:
 psql '<SECURE_DATABASE_URL>' -v ON_ERROR_STOP=1 -f supabase/audit/preflight_security_hardening.sql
 ```
 
-Lo script apre `BEGIN TRANSACTION READ ONLY` e termina con rollback. Tutte le righe dei primi due result set devono essere `PASS`.
+Lo script apre `BEGIN TRANSACTION READ ONLY` e termina con rollback. Prima della remediation possono essere `STOP` soltanto i tre blocker già diagnosticati (`auth_users_without_any_venue_access`, `non_super_primary_venue_access_missing`, `legacy_registration_codes_not_invalidated`); ogni altro `STOP` blocca il rilascio. Dopo la remediation tutte le righe dei primi due result set devono essere `PASS`.
 
 ### STOP immediato
 
 - target/project ref ambiguo;
 - backup mancante, non leggibile o senza hash;
-- qualunque anomalia dati non-zero: utenti/profili/accessi mancanti, null, duplicati, orfani o cross-venue;
+- qualunque anomalia dati non-zero diversa dai tre blocker approvati: utenti/profili/accessi mancanti, null, duplicati, orfani o cross-venue;
 - impronta schema diversa da 13 tabelle, 35 policy, 3 RLS disattivate, 9 policy aperte, 91 grant anon e 4 `SECURITY DEFINER` senza search path fissato;
-- numero inatteso di righe legacy `registration_code`;
+- una riga legacy `registration_code` senza venue valida oppure assenza del vincolo univoco `(key, venue_id)`; il numero totale è informativo perché può esistere una riga legittima per ogni venue;
 - schema ospitato diverso dal dump auditato;
 - import Excel vulnerabile ancora disponibile;
 - assenza di artifact frontend/rollback verificato.
 
-Non effettuare backfill o correzioni durante la finestra: preparare un piano dati separato, rifare backup e preflight.
+I tre blocker dati già approvati (`venue_access` primario mancante e codici legacy) si correggono esclusivamente con `supabase/release/remediate_production_preflight_blockers.sql`, dopo backup e maintenance mode. Qualunque altro STOP richiede un piano dati separato, nuovo backup e nuovo preflight.
 
 ## 4. Ordine esatto del rilascio
 
 1. Abilitare maintenance mode o impedire nuove registrazioni e modifiche concorrenti.
 2. Ricontrollare `<PRODUCTION_PROJECT_REF>` e commit candidato.
-3. Applicare una sola volta la migration transazionale:
+3. Eseguire la remediation approvata, verificare che inserisca soltanto gli accessi primari mancanti e invalidi tutte le righe legacy, quindi rieseguire il preflight fino a ottenere solo `PASS`:
+
+```bash
+psql '<SECURE_DATABASE_URL>' -v ON_ERROR_STOP=1 -f supabase/release/remediate_production_preflight_blockers.sql
+psql '<SECURE_DATABASE_URL>' -v ON_ERROR_STOP=1 -f supabase/audit/preflight_security_hardening.sql
+```
+
+4. Applicare una sola volta la migration transazionale:
 
 ```bash
 psql '<SECURE_DATABASE_URL>' -v ON_ERROR_STOP=1 -f supabase/migrations/20260721090000_security_hardening.sql
 ```
 
-4. Verificare immediatamente: 41 policy, zero tabelle `public` senza RLS, zero grant tabella `anon`, zero policy `true`, 15 tabelle applicative e funzioni `SECURITY DEFINER` con `search_path` fissato.
-5. Ruotare il valore legacy `configs.registration_code` con un valore casuale inutilizzabile e non condiviso, inserito dall’operatore tramite SQL Editor/strumento sicuro. Non salvare il nuovo valore. Il nuovo signup non lo consulta.
+5. Verificare immediatamente: 41 policy, zero tabelle `public` senza RLS, zero grant tabella `anon`, zero policy `true`, 15 tabelle applicative e funzioni `SECURITY DEFINER` con `search_path` fissato. Verificare inoltre che tutte le righe `configs` siano ancora presenti e che ogni `registration_code` sia un marker invalidato.
 6. Nel secret store Edge configurare:
    - `ALLOWED_ORIGINS=<EXACT_PRODUCTION_FRONTEND_ORIGIN>` senza slash finale e senza wildcard;
    - `REGISTRATION_RATE_LIMIT_PEPPER=<NEW_RANDOM_SECRET>`.

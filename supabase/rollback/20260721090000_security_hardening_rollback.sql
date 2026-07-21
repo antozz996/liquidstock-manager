@@ -3,6 +3,15 @@
 
 begin;
 
+-- A rollback must not reactivate any legacy shared signup code. Preserve every
+-- venue-scoped configs row, while invalidating any non-marker value in place.
+-- This security rotation is deliberately irreversible without a secure backup.
+update public.configs
+set value='disabled:'||encode(extensions.gen_random_bytes(32),'hex'),
+    updated_at=timezone('utc',now())
+where key='registration_code'
+  and value !~ '^disabled:[0-9a-f]{64}$';
+
 do $$ declare r record; begin
   for r in select schemaname, tablename, policyname from pg_policies where schemaname='public'
   loop execute format('drop policy if exists %I on %I.%I', r.policyname, r.schemaname, r.tablename); end loop;
