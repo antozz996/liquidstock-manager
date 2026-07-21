@@ -1,73 +1,93 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { Users, Key, RefreshCw, Trash2, ShieldCheck, Sparkles } from "lucide-react";
+import { Users, Key, Trash2, ShieldCheck, Sparkles } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
+import { createStaffInvite } from "../lib/registrationInvites";
+
+interface TeamProfile {
+  id: string;
+  full_name: string | null;
+  role: 'admin' | 'staff' | 'super_admin' | 'osservatore';
+  updated_at: string | null;
+}
 
 export default function Settings() {
   const { role, venueId } = useAuthStore();
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [regCode, setRegCode] = useState("");
-  const [newCode, setNewCode] = useState("");
+  const [profiles, setProfiles] = useState<TeamProfile[]>([]);
+  const [validatedVenueId, setValidatedVenueId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
 
-  const fetchData = async () => {
-    if (!venueId) return;
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
-    
-    // 1. Fetch Profiles per il locale corrente
-    const { data: pData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('venue_id', venueId)
-      .order('role', { ascending: true });
-    if (pData) setProfiles(pData);
+    setProfiles([]);
+    setValidatedVenueId(null);
+    setLoadError(null);
 
-    // 2. Fetch Registration Code per il locale corrente
-    const { data: cData } = await supabase
-      .from('configs')
-      .select('value')
-      .eq('key', 'registration_code')
-      .eq('venue_id', venueId)
-      .single();
-    
-    if (cData) {
-      setRegCode(cData.value);
-    } else {
-      setRegCode("NON CONFIGURATO");
-    }
-    
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [venueId]);
-
-  const handleUpdateCode = async () => {
-    if (!venueId) return;
-    if (!newCode || newCode.length < 4) {
-      alert("Il codice deve essere di almeno 4 caratteri.");
+    if (!venueId) {
+      setIsLoading(false);
       return;
     }
-    const { error } = await supabase
-      .from('configs')
-      .upsert({ 
-        key: 'registration_code', 
-        value: newCode, 
-        venue_id: venueId 
-      }, { onConflict: 'key,venue_id' });
-    
-    if (!error) {
-      setRegCode(newCode);
-      setNewCode("");
-      alert("✅ Codice di registrazione salvato correttamente!");
-    } else {
-      console.error(error);
-      alert("Errore durante il salvataggio.");
+
+    const { data: accessibleVenues, error: venueError } = await supabase.rpc('get_my_accessible_venues');
+    const isAuthorized = !venueError && (accessibleVenues || []).some((venue: { id: string }) => venue.id === venueId);
+    if (!isAuthorized) {
+      setLoadError("Il locale selezionato non è autorizzato per questo account.");
+      setIsLoading(false);
+      return;
+    }
+
+    const { data: accessRows, error: accessError } = await supabase
+      .from('venue_access')
+      .select('user_id')
+      .eq('venue_id', venueId);
+    if (accessError) {
+      setLoadError("Impossibile caricare le associazioni del team.");
+      setIsLoading(false);
+      return;
+    }
+
+    const userIds = [...new Set((accessRows || []).map((item) => item.user_id))];
+    if (userIds.length > 0) {
+      const { data: profileRows, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, role, updated_at')
+        .in('id', userIds)
+        .order('role', { ascending: true });
+      if (profileError) {
+        setLoadError("Impossibile caricare i profili del team.");
+        setIsLoading(false);
+        return;
+      }
+      setProfiles((profileRows || []) as TeamProfile[]);
+    }
+
+    setValidatedVenueId(venueId);
+    setIsLoading(false);
+  }, [venueId]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  const handleCreateInvite = async () => {
+    if (!venueId || validatedVenueId !== venueId) {
+      alert("Il locale selezionato non è autorizzato.");
+      return;
+    }
+    setIsCreatingInvite(true);
+    try {
+      const invite = await createStaffInvite(venueId);
+      await navigator.clipboard.writeText(`Ciao! Usa questo invito monouso entro 24 ore: ${invite.link}`);
+      alert("✅ Invito monouso copiato negli appunti.");
+    } catch {
+      alert("Errore durante la creazione dell’invito.");
+    } finally {
+      setIsCreatingInvite(false);
     }
   };
 
@@ -86,7 +106,12 @@ export default function Settings() {
 
     if (!confirm("Sei sicuro di voler eliminare questo profilo? L'utente perderà l'accesso a questo locale immediatamente.")) return;
     
-    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (!venueId || validatedVenueId !== venueId) {
+      alert("Il locale selezionato non è autorizzato.");
+      return;
+    }
+
+    const { error } = await supabase.rpc('remove_user_from_venue', { p_user_id: id, p_venue_id: validatedVenueId });
     if (!error) fetchData();
     else alert("Errore durante l'eliminazione.");
   };
@@ -122,50 +147,30 @@ export default function Settings() {
             <Key size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-white text-lg leading-tight uppercase tracking-tight">Staff Code</h3>
-            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none mt-1">Usato dallo Staff per registrarsi</p>
+            <h3 className="font-bold text-white text-lg leading-tight uppercase tracking-tight">Invito staff</h3>
+            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none mt-1">Monouso, revocabile e con scadenza</p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 mb-4">
-          <div className="flex gap-2">
-            <div className="flex-1 bg-black/40 rounded-lg border border-white/10 px-4 flex items-center h-12">
-              <span className="text-xl font-mono font-black tracking-widest text-primary italic">{regCode}</span>
-            </div>
-            <Button variant="outline" size="icon" className="h-12 w-12 border-white/10" onClick={fetchData}>
-              <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
-            </Button>
-          </div>
-          
+        <div className="flex flex-col gap-3">
           <Button 
             variant="secondary" 
             className="w-full text-[10px] font-black uppercase tracking-widest h-10 bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
-            onClick={() => {
-              const link = `${window.location.origin}/register?v=${venueId}`;
-              navigator.clipboard.writeText(`Ciao! Registrati su LiquidStock usando questo link: ${link} e il codice segreto: ${regCode}`);
-              alert("✅ Link e codice d'invito copiati!");
-            }}
+            onClick={handleCreateInvite}
+            disabled={isCreatingInvite || isLoading}
           >
-            Copia Messaggio Invito Staff
+            {isCreatingInvite ? "Creazione…" : "Crea e copia invito staff"}
           </Button>
-        </div>
-
-        <div className="space-y-2 pt-3 border-t border-white/5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rigenera Codice</label>
-          <div className="flex gap-2">
-            <Input 
-              placeholder="NUOVO CODICE..." 
-              className="h-10 flex-1 bg-black/40 border-white/10"
-              value={newCode}
-              onChange={e => setNewCode(e.target.value.toUpperCase())}
-            />
-            <Button size="sm" className="font-bold uppercase tracking-widest text-[10px]" onClick={handleUpdateCode}>Aggiorna</Button>
-          </div>
         </div>
       </Card>
 
       <div className="space-y-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Membri del Team ({profiles.length})</h3>
+        {loadError && (
+          <Card className="p-4 border-accent-red/20 bg-accent-red/10 text-sm text-accent-red">
+            {loadError}
+          </Card>
+        )}
         <div className="grid grid-cols-1 gap-2">
           {profiles.map(p => (
             <Card key={p.id} className="p-4 flex items-center justify-between border-white/5 bg-white/5">
@@ -212,6 +217,6 @@ export default function Settings() {
 }
 
 
-function cn(...classes: any[]) {
+function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }

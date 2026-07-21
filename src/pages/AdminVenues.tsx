@@ -4,8 +4,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { Building2, Plus, Globe, ShieldCheck, Edit2, Check, X, UserCog, Users } from "lucide-react";
+import { Building2, Plus, Globe, ShieldCheck, Edit2, Check, X, Users } from "lucide-react";
 import { formatDateTime } from "../lib/formatters";
+import { createStaffInvite } from "../lib/registrationInvites";
 
 interface Venue {
   id: string;
@@ -57,23 +58,11 @@ export default function AdminVenues() {
 
     try {
       // 1. Crea il locale
-      const { data: venue, error: vError } = await supabase
+      const { error: vError } = await supabase
         .from('venues')
-        .insert([{ name: newName, address: newAddress }])
-        .select()
-        .single();
+        .insert([{ name: newName, address: newAddress }]);
 
       if (vError) throw vError;
-
-      // 2. Crea il codice di registrazione predefinito per questo locale
-      const defaultCode = `INVITO-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-      await supabase
-        .from('configs')
-        .insert([{ 
-          key: 'registration_code', 
-          value: defaultCode, 
-          venue_id: venue.id 
-        }]);
 
       alert(`✅ Struttura "${newName}" creata con successo!`);
       setNewName("");
@@ -86,10 +75,14 @@ export default function AdminVenues() {
     }
   };
 
-  const copyInviteLink = async (venueId: string, targetRole: 'admin' | 'staff') => {
-    const link = `${window.location.origin}/register?v=${venueId}&r=${targetRole}`;
-    await navigator.clipboard.writeText(link);
-    alert(`✅ Link d'invito per ${targetRole.toUpperCase()} copiato negli appunti!`);
+  const copyInviteLink = async (venueId: string) => {
+    try {
+      const invite = await createStaffInvite(venueId);
+      await navigator.clipboard.writeText(invite.link);
+      alert(`✅ Invito staff monouso copiato. Scade il ${new Date(invite.expires_at).toLocaleString('it-IT')}.`);
+    } catch {
+      alert("Impossibile creare l’invito.");
+    }
   };
 
   if (role !== 'super_admin') {
@@ -172,20 +165,13 @@ export default function AdminVenues() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    variant="secondary" 
-                    className="flex-1 gap-2 h-11 bg-accent-orange/20 text-accent-orange border-accent-orange/20 hover:bg-accent-orange/30 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => copyInviteLink(v.id, 'admin')}
-                  >
-                    <UserCog size={16} /> Link Proprietario
-                  </Button>
+                <div className="grid grid-cols-1 gap-2">
                   <Button 
                     variant="outline" 
                     className="flex-1 gap-2 h-11 border-white/10 text-muted-foreground hover:bg-white/5 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => copyInviteLink(v.id, 'staff')}
+                    onClick={() => copyInviteLink(v.id)}
                   >
-                    <Users size={16} /> Link Staff
+                    <Users size={16} /> Crea invito staff monouso
                   </Button>
                 </div>
 
@@ -206,4 +192,3 @@ export default function AdminVenues() {
     </div>
   );
 }
-

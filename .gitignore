@@ -12,6 +12,14 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+signing_keys.json
+*.dump
+*.backup
 
 # Editor directories and files
 .vscode/*

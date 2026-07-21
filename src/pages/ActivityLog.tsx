@@ -49,7 +49,7 @@ export default function ActivityLog() {
     try {
       if (log.action_type === 'restock_close') {
         // Undo Restock: sottrai le quantità caricate
-        const items = log.details.items;
+        const items = log.details?.items || [];
         for (const it of items) {
           const { data: prod } = await supabase.from('products').select('current_stock').eq('id', it.product_id).single();
           if (prod) {
@@ -60,7 +60,7 @@ export default function ActivityLog() {
         }
       } else if (log.action_type === 'event_close') {
         // Undo Event Close: aggiungi indietro i consumi
-        const details = log.details.summary.details_json;
+        const details = log.details?.summary?.details_json || [];
         for (const row of details) {
           const { data: prod } = await supabase.from('products').select('current_stock').eq('id', row.product_id).single();
           if (prod) {
@@ -149,7 +149,7 @@ export default function ActivityLog() {
                 </div>
                 <div className="text-muted-foreground uppercase font-black tracking-widest">
                   {log.action_type.includes('event') ? (
-                    <span>Evento: <span className="text-white">{log.details.event_name}</span></span>
+                    <span>Evento: <span className="text-white">{log.details?.event_name || `#${log.action_id.slice(0, 5)}`}</span></span>
                   ) : (
                     <span>ID Carico: <span className="text-white">#{log.action_id.slice(0, 5)}</span></span>
                   )}

@@ -11,7 +11,7 @@ interface Venue {
 }
 
 export function VenueSwitcher() {
-  const { role, actualRole, venueId, switchVenue, setRole, user } = useAuthStore();
+  const { role, actualRole, venueId, switchVenue, user } = useAuthStore();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -22,21 +22,8 @@ export function VenueSwitcher() {
   }, [isSuperAdmin, user?.id]);
 
   const fetchVenues = async () => {
-    if (isSuperAdmin) {
-      const { data } = await supabase.from('venues').select('id, name').order('name');
-      if (data) setVenues(data);
-    } else {
-      // Per gli Admin/Staff, cerchiamo nella tabella venue_access
-      const { data } = await supabase
-        .from('venue_access')
-        .select('venue_id, venues(id, name)')
-        .eq('user_id', user?.id);
-      
-      if (data) {
-        const accessibleVenues = data.map((item: any) => item.venues).filter(Boolean);
-        setVenues(accessibleVenues);
-      }
-    }
+    const { data } = await supabase.rpc('get_my_accessible_venues');
+    if (data) setVenues(data.map(({ id, name }: Venue) => ({ id, name })));
   };
 
   if (!isSuperAdmin && venues.length <= 1) return null;
@@ -87,43 +74,6 @@ export function VenueSwitcher() {
                 <ShieldCheck size={18} />
                 <span className="font-black uppercase tracking-widest text-[11px]">⚙️ Gestione Locali (SaaS)</span>
               </Link>
-
-              {/* Anteprima Ruoli per Super Admin */}
-              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 space-y-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <LayoutGrid size={12} className="text-primary" />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-primary">Anteprima Ruolo</span>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setRole('staff')}
-                    className={cn(
-                      "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                      (role as string) === 'staff' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
-                    )}
-                  >
-                    Staff
-                  </button>
-                  <button 
-                    onClick={() => setRole('admin')}
-                    className={cn(
-                      "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                      (role as string) === 'admin' ? "bg-primary text-white border-primary" : "bg-white/5 border-white/10 text-muted-foreground"
-                    )}
-                  >
-                    Admin
-                  </button>
-                  <button 
-                    onClick={() => setRole('super_admin')}
-                    className={cn(
-                      "flex-1 h-8 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                      (role as string) === 'super_admin' ? "bg-accent-orange text-white border-accent-orange shadow-[0_0_10px_rgba(255,107,0,0.4)]" : "bg-white/5 border-white/10 text-muted-foreground"
-                    )}
-                  >
-                    Super Admin
-                  </button>
-                </div>
-              </div>
 
               <div className="h-[1px] bg-white/5 my-1" />
             </>

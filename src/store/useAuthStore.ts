@@ -9,11 +9,10 @@ interface AuthState {
   venueId: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, role: 'admin' | 'staff', explicitVenueId?: string, fullName?: string) => Promise<{ error: any }>;
+  registerWithInvite: (token: string, email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   checkUser: () => Promise<void>;
-  switchVenue: (venueId: string) => void;
-  setRole: (role: 'admin' | 'staff' | 'super_admin' | 'osservatore') => void;
+  switchVenue: (venueId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -28,35 +27,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      // 1. Recupera il ruolo e il locale dalla tabella profiles
-      let { data: profile } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('role, venue_id, full_name')
         .eq('id', user.id)
         .single();
-      
-      // 2. Auto-riparazione se il profilo manca
-      if (!profile) {
-        const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        if (count === 0) {
-          const { data: firstVenue } = await supabase.from('venues').select('id').limit(1).single();
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{ id: user.id, role: 'admin', venue_id: firstVenue?.id, full_name: 'Admin Iniziale' }])
-            .select()
-            .single();
-          if (!createError) profile = newProfile;
-        }
-      }
-        
+      const { data: accessibleVenues } = await supabase.rpc('get_my_accessible_venues');
+      const allowedVenueIds = new Set((accessibleVenues || []).map((venue: { id: string }) => venue.id));
       const savedVenueId = localStorage.getItem('selectedVenueId');
-      const savedRole = localStorage.getItem('selectedRole');
-        
+      const selectedVenueId = savedVenueId && allowedVenueIds.has(savedVenueId)
+        ? savedVenueId
+        : profile?.venue_id && allowedVenueIds.has(profile.venue_id)
+          ? profile.venue_id
+          : (accessibleVenues?.[0]?.id ?? null);
+      if (selectedVenueId) localStorage.setItem('selectedVenueId', selectedVenueId);
+      else localStorage.removeItem('selectedVenueId');
+      localStorage.removeItem('selectedRole');
       set({ 
         user, 
-        role: (savedRole as any) || profile?.role || 'staff', 
+        role: profile?.role || 'staff',
         actualRole: profile?.role || 'staff', 
-        venueId: savedVenueId || profile?.venue_id || null,
+        venueId: selectedVenueId,
         isLoading: false 
       });
     } else {
@@ -74,6 +65,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         .select('role, venue_id, full_name')
         .eq('id', data.user.id)
         .single();
+      const { data: accessibleVenues } = await supabase.rpc('get_my_accessible_venues');
+      const allowedVenueIds = new Set((accessibleVenues || []).map((venue: { id: string }) => venue.id));
+      const selectedVenueId = profile?.venue_id && allowedVenueIds.has(profile.venue_id)
+        ? profile.venue_id
+        : (accessibleVenues?.[0]?.id ?? null);
 
       // Rimuovi eventuali override precedenti per evitare interferenze
       localStorage.removeItem('selectedVenueId');
@@ -83,7 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: data.user, 
         role: profile?.role || 'staff', 
         actualRole: profile?.role || 'staff', 
-        venueId: profile?.venue_id || null,
+        venueId: selectedVenueId,
         isLoading: false 
       });
     } else {
@@ -93,49 +89,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     return { error };
   },
 
-  switchVenue: (venueId) => {
-    console.log("Switch locale a:", venueId);
+  switchVenue: async (venueId) => {
+    const { data } = await supabase.rpc('get_my_accessible_venues');
+    if (!(data || []).some((venue: { id: string }) => venue.id === venueId)) return;
     localStorage.setItem('selectedVenueId', venueId);
     set({ venueId });
-    // Dopo il cambio, ricarichiamo i dati (l'app reagirà allo stato)
     window.location.reload(); 
   },
 
-  setRole: (role) => {
-    console.log("Switch ruolo a:", role);
-    localStorage.setItem('selectedRole', role);
-    set({ role });
-  },
-
-  signUp: async (email, password, role, explicitVenueId, fullName) => {
-    console.log("Tentativo di registrazione per:", email, role, explicitVenueId, fullName);
+  registerWithInvite: async (token, email, password, fullName) => {
     set({ isLoading: true });
-    
     try {
-      const targetVenueId = explicitVenueId || useAuthStore.getState().venueId;
-      
-      const { error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: {
-            role: role,
-            venue_id: targetVenueId,
-            full_name: fullName
-          }
-        }
+      const { error } = await supabase.functions.invoke('register-with-invite', {
+        body: { token, email, password, full_name: fullName },
       });
-      
-      if (error) {
-        console.error("Errore Auth SignUp:", error);
-        set({ isLoading: false });
-        return { error };
-      }
-
-      // La creazione del profilo ora è delegata al TRIGGER del database
-      // per garantire che avvenga anche se l'utente deve ancora confermare l'email.
       set({ isLoading: false });
-      return { error: null };
+      return { error };
     } catch (err) {
       set({ isLoading: false });
       return { error: err };
@@ -143,9 +112,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('selectedVenueId');
     localStorage.removeItem('selectedRole');
-    set({ user: null, role: null, venueId: null, isLoading: false });
-    await supabase.auth.signOut();
+    set({ user: null, role: null, actualRole: null, venueId: null, isLoading: false });
   }
 }));

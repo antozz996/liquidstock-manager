@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:security": "node supabase/tests/security_hardening.mjs",
+    "test:registration-edge": "node supabase/tests/registration_edge_cases.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
