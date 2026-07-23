@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "test:security": "node supabase/tests/security_hardening.mjs",
     "test:registration-edge": "node supabase/tests/registration_edge_cases.mjs",
-    "test:preflight-remediation": "node supabase/tests/production_preflight_remediation.mjs"
+    "test:preflight-remediation": "node supabase/tests/production_preflight_remediation.mjs",
+    "test:manual-orders": "node supabase/tests/manual_orders.mjs",
+    "test:order-whatsapp": "node supabase/tests/order_permissions_whatsapp.mjs",
+    "test:orders-e2e": "node supabase/tests/orders_browser_e2e.mjs",
+    "test:orders-preflight": "node supabase/tests/orders_preflight.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

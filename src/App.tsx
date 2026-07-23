@@ -18,6 +18,8 @@ import AdminUsers from "./pages/AdminUsers";
 import Arrivals from "./pages/Arrivals";
 import ActivityLog from "./pages/ActivityLog";
 import OrderReview from "./pages/OrderReview";
+import Orders from "./pages/Orders";
+import ManualOrder from "./pages/ManualOrder";
 
 function App() {
   const { user, isLoading, checkUser, role } = useAuthStore();
@@ -49,6 +51,9 @@ function App() {
           <Route path="/history/:eventId" element={<ReportPage />} />
           <Route path="/arrivals" element={<Arrivals />} />
           <Route path="/order-review" element={<OrderReview />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/new" element={<ManualOrder />} />
+          <Route path="/orders/:orderId" element={<ManualOrder />} />
           <Route path="/log" element={<ActivityLog />} />
           {(role === 'admin' || role === 'super_admin' || role === 'staff' || role === 'osservatore') && <Route path="/analytics" element={<Analytics />} />}
           {(role === 'admin' || role === 'super_admin' || role === 'staff') && <Route path="/team" element={<Settings />} />}

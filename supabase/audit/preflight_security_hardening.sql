@@ -5,6 +5,7 @@
 -- Usage:
 --   psql --set=target_state=baseline -f supabase/audit/preflight_security_hardening.sql
 --   psql --set=target_state=hardened -f supabase/audit/preflight_security_hardening.sql
+--   psql --set=target_state=orders -f supabase/audit/preflight_security_hardening.sql
 -- target_state defaults to baseline for backwards compatibility.
 
 \if :{?target_state}
@@ -13,6 +14,8 @@
 \endif
 
 begin transaction read only;
+
+select :'target_state' = 'orders' as is_orders \gset
 
 -- Data compatibility: all expected counts are zero. Any STOP blocks release.
 with checks(check_name, observed_count, expected_count) as (
@@ -185,24 +188,32 @@ with mode(target_state) as (
 ),
 snapshot(check_name, observed_count, expected_count) as (
   select 'target_state_valid',
-    case when (select target_state from mode) in ('baseline','hardened')
+    case when (select target_state from mode) in ('baseline','hardened','orders')
       then 0::bigint else 1::bigint end,
     0::bigint
   union all
   select 'public_table_count', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 13::bigint when 'hardened' then 15::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 13::bigint when 'hardened' then 15::bigint when 'orders' then 21::bigint
+      else -1::bigint end
   from pg_catalog.pg_tables where schemaname='public'
   union all
   select 'public_policy_count', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 35::bigint when 'hardened' then 41::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 35::bigint when 'hardened' then 41::bigint when 'orders' then 52::bigint
+      else -1::bigint end
   from pg_catalog.pg_policies where schemaname='public'
   union all
   select 'public_tables_without_rls', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 3::bigint when 'hardened' then 0::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 3::bigint when 'hardened' then 0::bigint when 'orders' then 0::bigint
+      else -1::bigint end
   from pg_catalog.pg_tables where schemaname='public' and not rowsecurity
   union all
   select 'open_policy_count', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 9::bigint when 'hardened' then 0::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 9::bigint when 'hardened' then 0::bigint when 'orders' then 0::bigint
+      else -1::bigint end
   from pg_catalog.pg_policies
   where schemaname='public'
     and (
@@ -211,12 +222,16 @@ snapshot(check_name, observed_count, expected_count) as (
     )
   union all
   select 'anon_table_grants', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 91::bigint when 'hardened' then 0::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 91::bigint when 'hardened' then 0::bigint when 'orders' then 0::bigint
+      else -1::bigint end
   from information_schema.role_table_grants
   where table_schema='public' and grantee='anon'
   union all
   select 'unsafe_security_definer_functions', count(*)::bigint,
-    case (select target_state from mode) when 'baseline' then 4::bigint when 'hardened' then 0::bigint else -1::bigint end
+    case (select target_state from mode)
+      when 'baseline' then 4::bigint when 'hardened' then 0::bigint when 'orders' then 0::bigint
+      else -1::bigint end
   from pg_catalog.pg_proc p
   join pg_catalog.pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.prosecdef
@@ -270,5 +285,121 @@ where n.nspname='public' and p.prosecdef
     where setting like 'search_path=%'
   )
 order by function_name,arguments;
+
+\if :is_orders
+-- Sprint 1/2 structural and data consistency checks. These statements are
+-- parsed only in orders mode so baseline/hardened remain usable before the
+-- order tables exist.
+with required_tables(table_name) as (
+  values
+    ('departments'),
+    ('suppliers'),
+    ('order_permissions'),
+    ('purchase_orders'),
+    ('purchase_order_items'),
+    ('supplier_order_dispatches')
+),
+checks(check_name,observed_count,expected_count) as (
+  select 'orders_required_tables_missing',count(*)::bigint,0::bigint
+  from required_tables rt
+  where to_regclass('public.'||rt.table_name) is null
+  union all
+  select 'orders_required_rls_disabled',count(*)::bigint,0::bigint
+  from required_tables rt
+  left join pg_catalog.pg_class c on c.oid=to_regclass('public.'||rt.table_name)
+  where c.oid is null or not c.relrowsecurity
+  union all
+  select 'orders_anon_grants',count(*)::bigint,0::bigint
+  from information_schema.role_table_grants
+  where table_schema='public' and grantee='anon'
+    and table_name in (select table_name from required_tables)
+  union all
+  select 'orders_open_policies',count(*)::bigint,0::bigint
+  from pg_catalog.pg_policies
+  where schemaname='public'
+    and tablename in (select table_name from required_tables)
+    and (
+      regexp_replace(coalesce(qual,''),'[()[:space:]]','','g')='true'
+      or regexp_replace(coalesce(with_check,''),'[()[:space:]]','','g')='true'
+    )
+  union all
+  select 'orders_unsafe_security_definer_functions',count(*)::bigint,0::bigint
+  from pg_catalog.pg_proc p
+  join pg_catalog.pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.prosecdef
+    and p.proname in (
+      'has_order_permission',
+      'save_purchase_order_draft',
+      'set_order_permissions',
+      'record_whatsapp_opened'
+    )
+    and not exists (
+      select 1 from unnest(coalesce(p.proconfig,array[]::text[])) setting
+      where setting like 'search_path=%'
+    )
+)
+select check_name,observed_count,expected_count,
+  case when observed_count=expected_count then 'PASS' else 'STOP' end as release_status
+from checks
+order by check_name;
+
+with checks(check_name,observed_count,expected_count) as (
+  select 'departments_venue_orphans',count(*)::bigint,0::bigint
+  from public.departments d left join public.venues v on v.id=d.venue_id
+  where v.id is null
+  union all
+  select 'suppliers_venue_orphans',count(*)::bigint,0::bigint
+  from public.suppliers s left join public.venues v on v.id=s.venue_id
+  where v.id is null
+  union all
+  select 'order_permissions_missing_profile_or_access',count(*)::bigint,0::bigint
+  from public.order_permissions op
+  left join public.profiles p on p.id=op.user_id
+  left join public.venue_access va on va.user_id=op.user_id and va.venue_id=op.venue_id
+  where p.id is null or va.user_id is null
+  union all
+  select 'purchase_orders_department_cross_venue',count(*)::bigint,0::bigint
+  from public.purchase_orders po
+  left join public.departments d on d.id=po.department_id
+  where d.id is null or d.venue_id is distinct from po.venue_id
+  union all
+  select 'purchase_order_items_order_cross_venue',count(*)::bigint,0::bigint
+  from public.purchase_order_items poi
+  left join public.purchase_orders po on po.id=poi.purchase_order_id
+  where po.id is null or po.venue_id is distinct from poi.venue_id
+  union all
+  select 'purchase_order_items_product_cross_venue',count(*)::bigint,0::bigint
+  from public.purchase_order_items poi
+  join public.products p on p.id=poi.product_id
+  where p.venue_id is distinct from poi.venue_id
+  union all
+  select 'purchase_order_items_supplier_cross_venue',count(*)::bigint,0::bigint
+  from public.purchase_order_items poi
+  join public.suppliers s on s.id=poi.supplier_id
+  where s.venue_id is distinct from poi.venue_id
+  union all
+  select 'dispatch_order_cross_venue_or_version_ahead',count(*)::bigint,0::bigint
+  from public.supplier_order_dispatches sod
+  left join public.purchase_orders po on po.id=sod.purchase_order_id
+  where po.id is null
+     or po.venue_id is distinct from sod.venue_id
+     or sod.order_version>po.version
+  union all
+  select 'dispatch_supplier_cross_venue',count(*)::bigint,0::bigint
+  from public.supplier_order_dispatches sod
+  left join public.suppliers s on s.id=sod.supplier_id
+  where s.id is null
+     or s.venue_id is distinct from sod.venue_id
+  union all
+  select 'dispatch_user_orphans',count(*)::bigint,0::bigint
+  from public.supplier_order_dispatches sod
+  left join auth.users u on u.id=sod.opened_by
+  where u.id is null
+)
+select check_name,observed_count,expected_count,
+  case when observed_count=expected_count then 'PASS' else 'STOP' end as release_status
+from checks
+order by check_name;
+\endif
 
 rollback;

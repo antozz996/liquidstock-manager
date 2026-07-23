@@ -1,11 +1,18 @@
-import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users, Truck, Activity } from "lucide-react";
+import { useEffect } from "react";
+import { Home, Package, CalendarClock, History, BarChart3, LogOut, Users, Truck, Activity, ClipboardList } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useOrderStore } from "../../store/useOrderStore";
 
 export function BottomNav() {
   const location = useLocation();
-  const { role, signOut } = useAuthStore();
+  const { role, signOut, venueId, user } = useAuthStore();
+  const { canCreateManualOrders, checkPermission } = useOrderStore();
+
+  useEffect(() => {
+    void checkPermission();
+  }, [venueId,user?.id,checkPermission]);
 
   const navItems = [
     { name: "Home", path: "/", icon: Home },
@@ -13,6 +20,7 @@ export function BottomNav() {
       { name: "Arrivi", path: "/arrivals", icon: Truck },
       { name: "Serata", path: "/events", icon: CalendarClock },
     ] : []),
+    ...(canCreateManualOrders ? [{ name: "Ordini", path: "/orders", icon: ClipboardList }] : []),
     { name: "Magazzino", path: "/products", icon: Package },
     ...(role === 'admin' || role === 'super_admin' || role === 'osservatore' ? [
       { name: "Storia", path: "/history", icon: History },
@@ -41,6 +49,7 @@ export function BottomNav() {
             <Link
               key={item.path}
               to={item.path}
+              data-testid={item.path === '/orders' ? 'nav-orders' : undefined}
               className={cn(
                 "relative flex flex-col items-center justify-center flex-1 h-full transition-all duration-300",
                 isActive ? "text-accent-orange scale-110" : "text-muted-foreground hover:text-white"
