@@ -13,8 +13,11 @@
     "test:preflight-remediation": "node supabase/tests/production_preflight_remediation.mjs",
     "test:manual-orders": "node supabase/tests/manual_orders.mjs",
     "test:order-whatsapp": "node supabase/tests/order_permissions_whatsapp.mjs",
+    "test:order-lifecycle": "node supabase/tests/order_lifecycle.mjs",
     "test:orders-e2e": "node supabase/tests/orders_browser_e2e.mjs",
-    "test:orders-preflight": "node supabase/tests/orders_preflight.mjs"
+    "test:orders-preflight": "node supabase/tests/orders_preflight.mjs",
+    "test:order-lifecycle-preflight": "node supabase/tests/order_lifecycle_preflight.mjs",
+    "test:order-lifecycle-e2e": "node supabase/tests/orders_browser_e2e.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import WebSocket from 'ws';
 
 const dbContainer = process.env.SUPABASE_DB_CONTAINER || 'supabase_db_LIQUIDSTOCK';
@@ -13,6 +14,7 @@ const localPassword = 'E2e-Local-Only-42!';
 const results = [];
 const processes = [];
 const proxyTrace = [];
+const resultFile = '.tmp/order-lifecycle-e2e-result.json';
 
 const check = (name, condition, detail = '') => {
   if (!condition) throw new Error(`${name}: ${detail || 'assertion failed'}`);
@@ -63,8 +65,16 @@ class CdpClient {
       const pending = this.pending.get(message.id);
       if (!pending) return;
       this.pending.delete(message.id);
+      clearTimeout(pending.timer);
       if (message.error) pending.reject(new Error(message.error.message));
       else pending.resolve(message.result);
+    });
+    this.socket.on('close', () => {
+      for (const pending of this.pending.values()) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error('Chrome DevTools socket closed'));
+      }
+      this.pending.clear();
     });
   }
 
@@ -72,7 +82,12 @@ class CdpClient {
     await this.ready;
     const id = ++this.sequence;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      const commandTimeout = method === 'Runtime.evaluate' ? 5000 : 15000;
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`Chrome DevTools command timed out: ${method}`));
+      }, commandTimeout);
+      this.pending.set(id, { resolve, reject, timer });
       this.socket.send(JSON.stringify({ id, method, params }));
     });
   }
@@ -331,16 +346,82 @@ try {
     await client.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: point.x, y: point.y, button: 'left', clickCount: 1 });
   };
   const navigate = async (path) => {
-    await client.send('Page.navigate', { url: `${frontendOrigin}${path}` });
-    await waitExpression(`document.readyState==='complete'`, `page ${path}`);
+    const isFrontendPage = await client.evaluate(
+      `location.origin===${JSON.stringify(frontendOrigin)}`,
+    );
+    if (isFrontendPage) {
+      const currentPath = await client.evaluate('location.pathname');
+      if (currentPath === path && path !== '/login') {
+        const detour = path.startsWith('/orders/') ? '/orders' : '/';
+        await client.evaluate(`(() => {
+          history.pushState({},'',${JSON.stringify(detour)});
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          return true;
+        })()`);
+        await waitExpression(
+          `location.pathname===${JSON.stringify(detour)}`,
+          `detour ${detour}`,
+          10000,
+        );
+      }
+      await client.evaluate(`(() => {
+        history.pushState({},'',${JSON.stringify(path)});
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        return true;
+      })()`);
+    } else {
+      await client.send('Page.navigate', { url: `${frontendOrigin}${path}` });
+    }
+    await waitExpression(
+      `location.pathname===${JSON.stringify(path)} && document.readyState==='complete'`,
+      `page ${path}`,
+      20000,
+    );
   };
   const login = async (email) => {
-    await navigate('/login');
-    await waitExpression(`Boolean(document.querySelector('input[type="email"]'))`, 'login form');
-    await client.evaluate(nativeSet('input[type="email"]', email));
-    await client.evaluate(nativeSet('input[type="password"]', localPassword));
-    await client.evaluate(clickSelector('button[type="submit"]'), true);
-    await waitExpression(`location.pathname==='/'`, `login ${email}`, 20000);
+    let formReady = false;
+    for (let attempt = 1; attempt <= 2 && !formReady; attempt += 1) {
+      await navigate('/login');
+      try {
+        await waitExpression(
+          `Boolean(document.querySelector('input[type="email"]'))`,
+          'login form',
+          15000,
+        );
+        formReady = true;
+      } catch {
+        await client.send('Page.reload', { ignoreCache: true });
+      }
+    }
+    if (!formReady) {
+      const state = await client.evaluate(`({
+        path:location.pathname,
+        ready:document.readyState,
+        text:document.body.textContent.slice(0,600),
+        html:document.documentElement.outerHTML.slice(0,600)
+      })`);
+      throw new Error(`Login form unavailable: ${JSON.stringify(state)}`);
+    }
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      await client.evaluate(nativeSet('input[type="email"]', email));
+      await client.evaluate(nativeSet('input[type="password"]', localPassword));
+      await sleep(150);
+      await client.evaluate(clickSelector('button[type="submit"]'), true);
+      try {
+        await waitExpression(`location.pathname==='/'`, `login ${email}`, 10000);
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    const state = await client.evaluate(`({
+      path:location.pathname,
+      text:document.body.textContent.slice(0,600)
+    })`);
+    throw new Error(
+      `Login failed for ${email}: ${lastError?.message || 'unknown error'}; state=${JSON.stringify(state)}`,
+    );
   };
   const logout = async () => {
     await client.evaluate(`localStorage.clear();sessionStorage.clear();true`);
@@ -363,10 +444,17 @@ try {
   await navigate('/team');
   const staffCardSelector = `[data-testid="team-user-${staffAId}"]`;
   await waitExpression(`Boolean(document.querySelector(${JSON.stringify(staffCardSelector)}))`, 'staff permission card');
-  for (const permissionName of ['can_create_manual_orders', 'can_send_whatsapp_orders']) {
+  // React StrictMode performs the local development fetch twice. Wait until
+  // the second response has settled so it cannot overwrite the test click.
+  await sleep(1200);
+  for (const permissionName of [
+    'can_create_manual_orders',
+    'can_manage_orders',
+    'can_send_whatsapp_orders',
+  ]) {
     const selector = `${staffCardSelector} [data-permission="${permissionName}"]`;
     const alreadyChecked = await client.evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)})?.checked)`);
-    if (!alreadyChecked) await realClick(selector);
+    if (!alreadyChecked) await client.evaluate(clickSelector(selector), true);
     await sleep(300);
     await waitExpression(
       `Boolean(document.querySelector(${JSON.stringify(selector)})?.checked)`,
@@ -375,6 +463,7 @@ try {
   }
   await waitExpression(`[
     'can_create_manual_orders',
+    'can_manage_orders',
     'can_send_whatsapp_orders'
   ].every((name)=>document.querySelector(
     ${JSON.stringify(staffCardSelector)}+' [data-permission="'+name+'"]'
@@ -386,7 +475,12 @@ try {
     'visual permission confirmation',
   );
   check('permission granted from Team UI', psql(`
-    select (can_create_manual_orders and can_send_whatsapp_orders and is_active)::text
+    select (
+      can_create_manual_orders
+      and can_manage_orders
+      and can_send_whatsapp_orders
+      and is_active
+    )::text
     from public.order_permissions where venue_id='${venueA}' and user_id='${staffAId}';
   `) === 'true');
   await logout();
@@ -515,21 +609,211 @@ try {
       && document.querySelector(${JSON.stringify(`[data-testid="whatsapp-group-${quickSupplierId}"]`)}).textContent.includes('Copia testo')
   `));
 
+  await client.evaluate(`window.confirm=()=>true`);
+  await realClick(`[data-testid="confirm-sent-${supplierA}"]`);
+  await waitFor(() => psql(`
+    select po.status||'|'||spo.status
+    from public.purchase_orders po
+    join public.supplier_purchase_orders spo on spo.purchase_order_id=po.id
+    where po.id='${draftId}' and spo.supplier_id='${supplierA}';
+  `) === 'sent|sent_confirmed', 'first supplier confirmation');
+  check('browser confirms one supplier without auto-confirming the other', psql(`
+    select (
+      count(*) filter(where status='sent_confirmed')=1
+      and count(*) filter(where status in ('pending','whatsapp_opened'))=1
+    )::text
+    from public.supplier_purchase_orders where purchase_order_id='${draftId}';
+  `) === 'true');
+  check('browser confirmation creates snapshot and atomic outbox event', psql(`
+    select (
+      count(snapshot.id)=1
+      and count(outbox.id)=1
+      and bool_and(outbox.integration_version='1.0')
+      and bool_and(not (outbox.payload ? 'price'))
+    )::text
+    from public.supplier_purchase_orders spo
+    join public.supplier_purchase_order_items snapshot
+      on snapshot.supplier_purchase_order_id=spo.id
+    join public.integration_outbox outbox
+      on outbox.aggregate_id=spo.id
+     and outbox.event_type='supplier_order_confirmed'
+    where spo.purchase_order_id='${draftId}' and spo.supplier_id='${supplierA}';
+  `) === 'true');
+
+  await realClick(`[data-testid="confirm-sent-${quickSupplierId}"]`);
+  await waitFor(() => psql(`
+    select count(*) from public.supplier_purchase_orders
+    where purchase_order_id='${draftId}' and status='sent_confirmed';
+  `) === '2', 'second supplier confirmation');
+  check('browser supports two confirmed supplier sub-orders', true);
+
+  const supplierOrderAId = psql(`
+    select id from public.supplier_purchase_orders
+    where purchase_order_id='${draftId}' and supplier_id='${supplierA}';
+  `);
+  const supplierOrderQuickId = psql(`
+    select id from public.supplier_purchase_orders
+    where purchase_order_id='${draftId}' and supplier_id='${quickSupplierId}';
+  `);
+  const originalProductName = `E2E Prodotto A ${runId}`;
+  const originalSupplierName = `E2E Fornitore A ${runId}`;
+  psql(`
+    update public.products set name='E2E Prodotto A modificato ${runId}' where id='${productA}';
+    update public.suppliers set name='E2E Fornitore A modificato ${runId}' where id='${supplierA}';
+  `);
+  await client.evaluate(clickSelector('[aria-label="Chiudi anteprima WhatsApp"]'), true);
+  await navigate(`/orders/${draftId}/detail`);
+  await waitExpression(`Boolean(document.querySelector('[data-testid="order-detail-page"]'))`, 'order detail page');
+  check('detail history keeps immutable product and supplier snapshots', await client.evaluate(`
+    document.body.textContent.includes(${JSON.stringify(originalProductName)})
+      && document.body.textContent.includes(${JSON.stringify(originalSupplierName)})
+      && !document.body.textContent.includes(${JSON.stringify(`E2E Prodotto A modificato ${runId}`)})
+  `));
+
+  await navigate(`/orders/${draftId}/suppliers/${supplierOrderAId}/receive`);
+  await waitExpression(`Boolean(document.querySelector('[data-testid="order-receipt-page"]'))`, 'supplier receipt page');
+  await sleep(500);
+  await waitFor(
+    () => client.evaluate(nativeSet('[data-field="received-quantity"]', '2')),
+    'set partial receipt quantity',
+  );
+  await waitFor(
+    () => client.evaluate(nativeSet('[data-field="receipt-note"]', 'Consegna parziale E2E')),
+    'set partial receipt note',
+  );
+  await client.evaluate(clickSelector('[data-testid="save-order-receipt"]'), true);
+  await waitExpression(`location.pathname===${JSON.stringify(`/orders/${draftId}/detail`)}`, 'partial receipt redirect', 20000);
+  check('browser records a partial receipt and missing quantity', psql(`
+    select (
+      spo.status='partially_received'
+      and receipt.status='partial'
+      and item.received_quantity=2
+      and item.missing_quantity=2
+      and item.line_status='partial'
+    )::text
+    from public.supplier_purchase_orders spo
+    join lateral (
+      select * from public.supplier_order_receipts
+      where supplier_purchase_order_id=spo.id order by created_at desc limit 1
+    ) receipt on true
+    join public.supplier_order_receipt_items item on item.receipt_id=receipt.id
+    where spo.id='${supplierOrderAId}';
+  `) === 'true');
+  check('general order becomes partially received while suppliers differ', psql(`
+    select status from public.purchase_orders where id='${draftId}';
+  `) === 'partially_received');
+
+  await navigate(`/orders/${draftId}/suppliers/${supplierOrderAId}/receive`);
+  await waitExpression(`Boolean(document.querySelector('[data-testid="order-receipt-page"]'))`, 'second supplier receipt page');
+  await sleep(500);
+  await waitFor(
+    () => client.evaluate(nativeSet('[data-field="received-quantity"]', '5')),
+    'set over-receipt quantity',
+  );
+  check('browser highlights quantity above ordered', await client.evaluate(`
+    document.body.textContent.includes('Superiore all’ordinato')
+  `));
+  await client.evaluate(clickSelector('[data-testid="save-order-receipt"]'), true);
+  await waitExpression(`location.pathname===${JSON.stringify(`/orders/${draftId}/detail`)}`, 'over receipt redirect', 20000);
+  check('browser accepts over-receipt without changing ordered quantity', psql(`
+    select (
+      spo.status='received'
+      and item.received_quantity=5
+      and item.ordered_quantity_snapshot=4
+      and item.line_status='over_received'
+    )::text
+    from public.supplier_purchase_orders spo
+    join lateral (
+      select * from public.supplier_order_receipts
+      where supplier_purchase_order_id=spo.id order by created_at desc limit 1
+    ) receipt on true
+    join public.supplier_order_receipt_items item on item.receipt_id=receipt.id
+    where spo.id='${supplierOrderAId}';
+  `) === 'true');
+
+  const quickQuantity = psql(`
+    select quantity::text from public.supplier_purchase_order_items
+    where supplier_purchase_order_id='${supplierOrderQuickId}';
+  `);
+  await navigate(`/orders/${draftId}/suppliers/${supplierOrderQuickId}/receive`);
+  await waitExpression(`Boolean(document.querySelector('[data-testid="order-receipt-page"]'))`, 'second supplier receipt');
+  await sleep(500);
+  await waitFor(
+    () => client.evaluate(nativeSet('[data-field="received-quantity"]', quickQuantity)),
+    'set complete receipt quantity',
+  );
+  await client.evaluate(clickSelector('[data-testid="save-order-receipt"]'), true);
+  await waitExpression(`location.pathname===${JSON.stringify(`/orders/${draftId}/detail`)}`, 'complete order redirect', 20000);
+  check('all supplier receipts complete the general order', psql(`
+    select status from public.purchase_orders where id='${draftId}';
+  `) === 'received');
+  check('received events are recorded for both suppliers', psql(`
+    select count(*) from public.integration_outbox outbox
+    join public.supplier_purchase_orders spo on spo.id=outbox.aggregate_id
+    where spo.purchase_order_id='${draftId}'
+      and outbox.event_type='supplier_order_received';
+  `) === '2');
+
+  const cancelDraftId = psql(`
+    begin;
+    set local "request.jwt.claim.sub"='${staffAId}';
+    set local "request.jwt.claim.role"='authenticated';
+    set local role authenticated;
+    select id from public.save_purchase_order_draft(
+      '${venueA}'::uuid,
+      '${departmentA}'::uuid,
+      '[{"product_name_snapshot":"E2E annullamento ${runId}","quantity":1,"unit":"pz","supplier_id":"${quickSupplierId}"}]'::jsonb
+    );
+    commit;
+  `);
+  await navigate('/orders');
+  await waitExpression(
+    `Boolean(document.querySelector(${JSON.stringify(`[data-testid="cancel-order-${cancelDraftId}"]`)}))`,
+    'whole order cancellation',
+  );
+  await client.evaluate(clickSelector(`[data-testid="cancel-order-${cancelDraftId}"]`), true);
+  await waitFor(() => psql(`
+    select status from public.purchase_orders where id='${cancelDraftId}';
+  `) === 'cancelled', 'cancelled general order');
+  check('browser cancellation reaches terminal cancelled state', true);
+
   await navigate(`/orders/${orderBId}`);
   await waitExpression(`document.body.textContent.includes('Bozza non trovata o non accessibile')`, 'cross-venue draft denial');
   check('cross-venue browser access is blocked by RLS', true);
 
+  const deleteDraftId = psql(`
+    begin;
+    set local "request.jwt.claim.sub"='${staffAId}';
+    set local "request.jwt.claim.role"='authenticated';
+    set local role authenticated;
+    select id from public.save_purchase_order_draft(
+      '${venueA}'::uuid,
+      '${departmentA}'::uuid,
+      '[{"product_name_snapshot":"E2E eliminazione ${runId}","quantity":1,"unit":"pz"}]'::jsonb
+    );
+    commit;
+  `);
   await navigate('/orders');
-  await waitExpression(`Boolean(document.querySelector(${JSON.stringify(`[data-testid="delete-order-${draftId}"]`)}))`, 'draft delete button');
-  await client.evaluate(`window.confirm=()=>true`);
-  await client.evaluate(clickSelector(`[data-testid="delete-order-${draftId}"]`), true);
-  await waitExpression(`!document.querySelector(${JSON.stringify(`[data-testid="order-draft-${draftId}"]`)})`, 'draft deletion');
-  check('browser deletes own draft', psql(`select count(*) from public.purchase_orders where id='${draftId}';`) === '0');
+  await waitExpression(`Boolean(document.querySelector(${JSON.stringify(`[data-testid="delete-order-${deleteDraftId}"]`)}))`, 'draft delete button');
+  await client.evaluate(clickSelector(`[data-testid="delete-order-${deleteDraftId}"]`), true);
+  await waitExpression(`!document.querySelector(${JSON.stringify(`[data-testid="order-draft-${deleteDraftId}"]`)})`, 'draft deletion');
+  check('browser deletes own draft', psql(`select count(*) from public.purchase_orders where id='${deleteDraftId}';`) === '0');
   check('browser E2E leaves current_stock unchanged', psql(`
     select md5(current_stock::text) from public.products where id='${productA}';
   `) === stockBefore);
 
-  console.log(JSON.stringify({ status: 'PASS', tests: results.length, results }, null, 2));
+  const report = { status: 'PASS', tests: results.length, results };
+  writeFileSync(resultFile, `${JSON.stringify(report, null, 2)}\n`);
+  console.log(JSON.stringify(report, null, 2));
+} catch (error) {
+  writeFileSync(resultFile, `${JSON.stringify({
+    status: 'FAIL',
+    tests: results.length,
+    results,
+    error: error instanceof Error ? error.message : String(error),
+    proxyTrace,
+  }, null, 2)}\n`);
+  throw error;
 } finally {
   client?.close();
   for (const child of processes.reverse()) {
@@ -540,8 +824,10 @@ try {
     }
   }
   if (proxyServer) {
+    const closed = new Promise((resolve) => proxyServer.close(resolve));
+    proxyServer.closeIdleConnections?.();
     proxyServer.closeAllConnections?.();
-    await new Promise((resolve) => proxyServer.close(resolve));
+    await Promise.race([closed, sleep(2000)]);
   }
   try {
     psql(`

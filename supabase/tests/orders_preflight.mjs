@@ -9,6 +9,14 @@ const preflight = readFileSync(
   resolve('supabase/audit/preflight_security_hardening.sql'),
   'utf8',
 );
+const lifecycleMigration = readFileSync(
+  resolve('supabase/migrations/20260723160000_order_lifecycle_price_sentinel_bridge.sql'),
+  'utf8',
+);
+const lifecycleRollback = readFileSync(
+  resolve('supabase/rollback/20260723160000_order_lifecycle_price_sentinel_bridge_rollback.sql'),
+  'utf8',
+);
 const run = (targetState, prefix = '') => execFileSync(
   'docker',
   [
@@ -28,46 +36,61 @@ const psql = (sql) => execFileSync(
   ['exec', '-i', dbContainer, 'psql', '-X', '-qAt', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'],
   { input: sql, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
 ).trim();
+const runFile = (sql) => execFileSync(
+  'docker',
+  ['exec', '-i', dbContainer, 'psql', '-X', '-q', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
+  { input: sql, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
+);
 const results = [];
 const check = (name, condition, detail = '') => {
   if (!condition) throw new Error(`${name}: ${detail || 'assertion failed'}`);
   results.push({ name, status: 'PASS' });
 };
 
-for (const legacyMode of ['baseline', 'hardened']) {
-  const output = run(legacyMode);
-  check(
-    `${legacyMode} mode remains executable`,
-    output.includes(`${legacyMode}|target_state_valid|0|0|PASS`),
+const lifecycleWasInstalled = psql(
+  "select to_regclass('public.supplier_purchase_orders') is not null;",
+) === 't';
+
+try {
+  if (lifecycleWasInstalled) runFile(lifecycleRollback);
+
+  for (const legacyMode of ['baseline', 'hardened']) {
+    const output = run(legacyMode);
+    check(
+      `${legacyMode} mode remains executable`,
+      output.includes(`${legacyMode}|target_state_valid|0|0|PASS`),
+    );
+  }
+
+  const ordersOutput = run('orders');
+  check('orders mode accepts the expected schema fingerprint', !/\|STOP$/m.test(ordersOutput));
+  check('orders mode checks required tables', ordersOutput.includes('orders_required_tables_missing|0|0|PASS'));
+  check('orders mode checks RLS', ordersOutput.includes('orders_required_rls_disabled|0|0|PASS'));
+  check('orders mode checks anonymous grants', ordersOutput.includes('orders_anon_grants|0|0|PASS'));
+  check('orders mode checks open policies', ordersOutput.includes('orders_open_policies|0|0|PASS'));
+  check('orders mode checks SECURITY DEFINER search_path', ordersOutput.includes('orders_unsafe_security_definer_functions|0|0|PASS'));
+  check('orders mode checks cross-venue references', ordersOutput.includes('purchase_order_items_supplier_cross_venue|0|0|PASS'));
+  check('orders mode checks permission consistency', ordersOutput.includes('order_permissions_missing_profile_or_access|0|0|PASS'));
+
+  const driftOutput = run(
+    'orders',
+    'begin;\nalter table public.supplier_order_dispatches disable row level security;\n',
   );
+  check(
+    'orders mode detects intentional RLS drift',
+    driftOutput.includes('orders_required_rls_disabled|1|0|STOP')
+      && driftOutput.includes('orders|public_tables_without_rls|1|0|STOP'),
+  );
+  check(
+    'intentional drift is rolled back',
+    psql(`
+      select relrowsecurity
+      from pg_catalog.pg_class
+      where oid='public.supplier_order_dispatches'::regclass;
+    `) === 't',
+  );
+} finally {
+  if (lifecycleWasInstalled) runFile(lifecycleMigration);
 }
-
-const ordersOutput = run('orders');
-check('orders mode accepts the expected schema fingerprint', !/\|STOP$/m.test(ordersOutput));
-check('orders mode checks required tables', ordersOutput.includes('orders_required_tables_missing|0|0|PASS'));
-check('orders mode checks RLS', ordersOutput.includes('orders_required_rls_disabled|0|0|PASS'));
-check('orders mode checks anonymous grants', ordersOutput.includes('orders_anon_grants|0|0|PASS'));
-check('orders mode checks open policies', ordersOutput.includes('orders_open_policies|0|0|PASS'));
-check('orders mode checks SECURITY DEFINER search_path', ordersOutput.includes('orders_unsafe_security_definer_functions|0|0|PASS'));
-check('orders mode checks cross-venue references', ordersOutput.includes('purchase_order_items_supplier_cross_venue|0|0|PASS'));
-check('orders mode checks permission consistency', ordersOutput.includes('order_permissions_missing_profile_or_access|0|0|PASS'));
-
-const driftOutput = run(
-  'orders',
-  'begin;\nalter table public.supplier_order_dispatches disable row level security;\n',
-);
-check(
-  'orders mode detects intentional RLS drift',
-  driftOutput.includes('orders_required_rls_disabled|1|0|STOP')
-    && driftOutput.includes('orders|public_tables_without_rls|1|0|STOP'),
-);
-check(
-  'intentional drift is rolled back',
-  psql(`
-    select relrowsecurity
-    from pg_catalog.pg_class
-    where oid='public.supplier_order_dispatches'::regclass;
-  `) === 't',
-);
 
 console.log(JSON.stringify({ status: 'PASS', tests: results.length, results }, null, 2));

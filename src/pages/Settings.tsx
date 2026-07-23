@@ -37,8 +37,8 @@ const emptyOrderPermission = (): EditableOrderPermission => ({
 const permissionFields: Array<{ key: keyof EditableOrderPermission; label: string; note: string }> = [
   { key: 'can_create_manual_orders', label: 'Ordini manuali', note: 'Crea e modifica le proprie bozze' },
   { key: 'can_create_stock_orders', label: 'Ordini da giacenza', note: 'Predisposto per uno sprint futuro' },
-  { key: 'can_manage_orders', label: 'Gestione ordini', note: 'Gestisce anche le bozze altrui' },
-  { key: 'can_send_whatsapp_orders', label: 'Apertura WhatsApp', note: 'Registra e apre i messaggi per fornitore' },
+  { key: 'can_manage_orders', label: 'Gestione ordini', note: 'Gestisce bozze, ricezioni e annullamenti' },
+  { key: 'can_send_whatsapp_orders', label: 'Invio WhatsApp', note: 'Apre il messaggio e ne conferma manualmente l’invio' },
   { key: 'can_view_purchase_prices', label: 'Visualizza prezzi', note: 'Predisposto; i prezzi restano nascosti' },
   { key: 'is_active', label: 'Accesso Ordini attivo', note: 'Se disattivo, nasconde e blocca il modulo' },
 ];

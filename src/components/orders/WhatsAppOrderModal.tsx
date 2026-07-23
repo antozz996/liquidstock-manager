@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, ExternalLink, MessageCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, ExternalLink, LockKeyhole, MessageCircle, X } from 'lucide-react';
 import { buildWhatsappMessage, buildWhatsappUrl, groupOrderItemsBySupplier, normalizeWhatsappNumber } from '../../lib/orderWhatsapp';
-import type { PurchaseOrder, Supplier } from '../../types/orders';
+import type { ConfirmSupplierOrderInput, PurchaseOrder, Supplier } from '../../types/orders';
+import { OrderStatusBadge } from './OrderStatusBadge';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
@@ -18,6 +19,7 @@ interface WhatsAppOrderModalProps {
     whatsappNumberSnapshot: string;
     messageSnapshot: string;
   }) => Promise<unknown>;
+  onConfirmSent: (input: ConfirmSupplierOrderInput) => Promise<unknown>;
 }
 
 export function WhatsAppOrderModal({
@@ -27,6 +29,7 @@ export function WhatsAppOrderModal({
   canSend,
   onClose,
   onRecordOpened,
+  onConfirmSent,
 }: WhatsAppOrderModalProps) {
   const { assigned, unassigned } = useMemo(() => groupOrderItemsBySupplier(order), [order]);
   const groups = useMemo(() => [...assigned.entries()].map(([supplierId, items]) => {
@@ -36,8 +39,11 @@ export function WhatsAppOrderModal({
       supplier,
       supplierName: supplier?.name || items[0]?.supplier_name_snapshot || 'Fornitore',
       items,
+      trackedOrder: order.supplier_orders?.find(
+        (supplierOrder) => supplierOrder.supplier_id === supplierId,
+      ),
     };
-  }).sort((a, b) => a.supplierName.localeCompare(b.supplierName)), [assigned, suppliers]);
+  }).sort((a, b) => a.supplierName.localeCompare(b.supplierName)), [assigned,order.supplier_orders,suppliers]);
   const [messages, setMessages] = useState<Record<string, string>>(() => Object.fromEntries(
     groups.map((group) => [
       group.supplierId,
@@ -53,6 +59,8 @@ export function WhatsAppOrderModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [opened, setOpened] = useState<Record<string, boolean>>({});
   const [openingSupplierId, setOpeningSupplierId] = useState<string | null>(null);
+  const [confirmingSupplierId,setConfirmingSupplierId] = useState<string | null>(null);
+  const [confirmed,setConfirmed] = useState<Record<string,boolean>>({});
 
   const copyMessage = async (supplierId: string) => {
     try {
@@ -61,6 +69,37 @@ export function WhatsAppOrderModal({
       setErrors((current) => ({ ...current, [supplierId]: '' }));
     } catch {
       setErrors((current) => ({ ...current, [supplierId]: 'Impossibile copiare il testo negli appunti.' }));
+    }
+  };
+
+  const confirmSent = async (supplierId: string) => {
+    if (!canSend) {
+      setErrors((current) => ({
+        ...current,
+        [supplierId]: 'Permesso di conferma invio non disponibile.',
+      }));
+      return;
+    }
+    if (!confirm(
+      'Confermare che l’ordine è stato inviato? Verrà creato uno snapshot immutabile e la bozza non sarà più modificabile.',
+    )) return;
+
+    setConfirmingSupplierId(supplierId);
+    setErrors((current) => ({ ...current,[supplierId]: '' }));
+    try {
+      await onConfirmSent({
+        purchaseOrderId: order.id,
+        supplierId,
+        orderVersion: order.version,
+      });
+      setConfirmed((current) => ({ ...current,[supplierId]: true }));
+    } catch (error) {
+      setErrors((current) => ({
+        ...current,
+        [supplierId]: error instanceof Error ? error.message : 'Conferma invio non riuscita.',
+      }));
+    } finally {
+      setConfirmingSupplierId(null);
     }
   };
 
@@ -133,7 +172,10 @@ export function WhatsAppOrderModal({
             <AlertTriangle size={18} className="text-accent-orange shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-sm">Righe senza fornitore: {unassigned.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">Queste righe restano nella bozza e non generano un messaggio WhatsApp.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Queste righe non generano un messaggio. Dopo la prima conferma fornitore
+                l’intero ordine sarà bloccato e resteranno non inviate.
+              </p>
             </div>
           </Card>
         )}
@@ -147,6 +189,11 @@ export function WhatsAppOrderModal({
 
         {groups.map((group) => {
           const normalizedNumber = normalizeWhatsappNumber(group.supplier?.whatsapp_number);
+          const trackedStatus = confirmed[group.supplierId]
+            ? 'sent_confirmed'
+            : group.trackedOrder?.status || 'pending';
+          const isConfirmed = ['sent_confirmed','partially_received','received'].includes(trackedStatus);
+          const isCancelled = trackedStatus === 'cancelled';
           return (
             <Card key={group.supplierId} data-testid={`whatsapp-group-${group.supplierId}`} className="p-5 space-y-4 border-white/10 bg-card">
               <div className="flex items-start justify-between gap-3">
@@ -158,6 +205,9 @@ export function WhatsAppOrderModal({
                   <p className="text-[10px] text-muted-foreground mt-1">
                     {normalizedNumber ? `wa.me/${normalizedNumber}` : 'Numero WhatsApp non disponibile'}
                   </p>
+                  <div className="mt-2">
+                    <OrderStatusBadge status={trackedStatus} />
+                  </div>
                 </div>
                 {opened[group.supplierId] && (
                   <span className="flex items-center gap-1 text-[9px] font-black uppercase text-accent-green">
@@ -186,13 +236,39 @@ export function WhatsAppOrderModal({
                 <Button
                   data-testid={`open-whatsapp-${group.supplierId}`}
                   className="gap-2"
-                  disabled={!canSend || openingSupplierId === group.supplierId}
+                  disabled={!canSend
+                    || isConfirmed
+                    || isCancelled
+                    || openingSupplierId === group.supplierId}
                   onClick={() => void openWhatsapp(group.supplierId, group.supplier?.whatsapp_number)}
                 >
                   <ExternalLink size={15} />
-                  {openingSupplierId === group.supplierId ? 'Registrazione…' : 'Invia su WhatsApp'}
+                  {isConfirmed
+                    ? 'Ordine già confermato'
+                    : isCancelled
+                      ? 'Ordine annullato'
+                      : openingSupplierId === group.supplierId
+                        ? 'Registrazione…'
+                        : 'Invia su WhatsApp'}
                 </Button>
               </div>
+
+              {!isCancelled && (
+                <Button
+                  data-testid={`confirm-sent-${group.supplierId}`}
+                  variant={isConfirmed ? 'secondary' : 'default'}
+                  className="w-full gap-2 font-black uppercase tracking-widest text-[10px]"
+                  disabled={!canSend || isConfirmed || confirmingSupplierId === group.supplierId}
+                  onClick={() => void confirmSent(group.supplierId)}
+                >
+                  {isConfirmed ? <CheckCircle2 size={15} /> : <LockKeyhole size={15} />}
+                  {isConfirmed
+                    ? 'Invio confermato'
+                    : confirmingSupplierId === group.supplierId
+                      ? 'Conferma…'
+                      : 'Conferma ordine inviato'}
+                </Button>
+              )}
             </Card>
           );
         })}
